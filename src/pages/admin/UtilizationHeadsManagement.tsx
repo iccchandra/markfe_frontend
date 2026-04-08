@@ -20,7 +20,8 @@ export const UtilizationHeadsManagement: React.FC = () => {
     const load = async () => {
       try {
         const { data } = await utilizationHeadsAPI.list();
-        setHeads(data.sort((a, b) => a.display_order - b.display_order));
+        const list: UtilizationHead[] = Array.isArray(data) ? data : (data as any)?.data || [];
+        setHeads(list.sort((a, b) => a.display_order - b.display_order));
       } catch { setMessage({ type: 'error', text: 'Failed to load' }); }
       finally { setLoading(false); }
     };

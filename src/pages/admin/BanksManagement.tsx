@@ -18,7 +18,7 @@ export const BanksManagement: React.FC = () => {
     const load = async () => {
       try {
         const { data } = await banksAPI.list();
-        setBanks(data);
+        setBanks(Array.isArray(data) ? data : (data as any)?.data || []);
       } catch { setMessage({ type: 'error', text: 'Failed to load' }); }
       finally { setLoading(false); }
     };
