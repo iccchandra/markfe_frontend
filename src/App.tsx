@@ -70,7 +70,8 @@ function App() {
               <Route path="loan" element={<LoanSanctionForm />} />
               <Route path="drawdowns" element={<DrawdownsForm />} />
               <Route path="utilization" element={<UtilizationList />} />
-              <Route path="utilization/:districtId" element={<UtilizationForm />} />
+              <Route path="utilization/new" element={<UtilizationForm />} />
+              <Route path="utilization/:id" element={<UtilizationForm />} />
               <Route path="farmers" element={<FarmersList />} />
               <Route path="farmers/:districtId" element={<FarmersForm />} />
             </Route>

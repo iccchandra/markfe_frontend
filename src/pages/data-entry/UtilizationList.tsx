@@ -1,16 +1,16 @@
 // ============================================
 // pages/data-entry/UtilizationList.tsx — Fund Utilization List Page
-// Shows all districts with utilization status, navigates to form
+// Shows ALL utilization records (multiple per district per season)
 // ============================================
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  PieChart, Loader2, Plus, Eye, Edit2, CheckCircle, XCircle, ArrowRight,
+  PieChart, Loader2, Plus, Eye, Edit2, Trash2, Send, CheckCircle, XCircle,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { seasonsAPI, districtsAPI, utilizationAPI, drawdownsAPI } from '../../api/services';
-import type { Season, District, DistrictUtilization, DistrictDrawdown } from '../../types/markfed';
-import { UserRole, formatAmount, num, ApprovalStatus, calcTotalUtilization } from '../../types/markfed';
+import { seasonsAPI, districtsAPI, utilizationAPI } from '../../api/services';
+import type { Season, District, DistrictUtilization } from '../../types/markfed';
+import { UserRole, formatAmount, calcTotalUtilization, ApprovalStatus } from '../../types/markfed';
 
 // ─── Status Badge ────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -30,39 +30,32 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// ─── Row type ────────────────────────────────────
-interface DistrictRow {
-  districtId: number;
-  districtName: string;
-  totalUtilized: number;
-  fundsReceived: number;
-  balance: number;
-  status: string; // ApprovalStatus | 'pending'
-  utilizationRecord: DistrictUtilization | null;
-}
-
 export const UtilizationList: React.FC = () => {
   const navigate = useNavigate();
   const { user, hasRole } = useAuth();
 
+  const isDM = user?.role === UserRole.DM;
   const canApprove = hasRole(UserRole.AO_CAO, UserRole.MD, UserRole.SUPER_ADMIN);
 
   // Data
   const [season, setSeason] = useState<Season | null>(null);
-  const [rows, setRows] = useState<DistrictRow[]>([]);
+  const [records, setRecords] = useState<DistrictUtilization[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Approve/Reject state
+  // Action state
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [rejectModalDistrictId, setRejectModalDistrictId] = useState<number | null>(null);
+  const [rejectModalRecordId, setRejectModalRecordId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Add modal
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addDistrictId, setAddDistrictId] = useState<number>(0);
-  const [allDistricts, setAllDistricts] = useState<District[]>([]);
+  // District name map for display
+  const districtMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    districts.forEach((d) => { map[d.id] = d.name; });
+    return map;
+  }, [districts]);
 
   useEffect(() => {
     const load = async () => {
@@ -73,68 +66,23 @@ export const UtilizationList: React.FC = () => {
         ]);
 
         const activeSeason = seasonRes.data;
-        const districts: District[] = distRes.data;
+        const districtList: District[] = distRes.data;
         setSeason(activeSeason);
-        setAllDistricts(districts);
+        setDistricts(districtList);
 
-        // Load utilization and drawdown data
-        const [utilRes, ddRes] = await Promise.allSettled([
-          utilizationAPI.listAll(activeSeason.id),
-          drawdownsAPI.list(activeSeason.id),
-        ]);
-
-        // Parse utilization records (may be paginated)
+        // Load utilization records - filtered by district for DM users
         let utilRecords: DistrictUtilization[] = [];
-        if (utilRes.status === 'fulfilled') {
-          const raw = utilRes.value.data;
+        if (isDM && user?.district_id) {
+          const utilRes = await utilizationAPI.listByDistrict(activeSeason.id, user.district_id);
+          const raw = utilRes.data;
+          utilRecords = Array.isArray(raw) ? raw : (raw as any)?.data || [];
+        } else {
+          const utilRes = await utilizationAPI.listAll(activeSeason.id);
+          const raw = utilRes.data;
           utilRecords = Array.isArray(raw) ? raw : (raw as any)?.data || [];
         }
 
-        // Parse drawdowns (may be paginated)
-        let drawdowns: DistrictDrawdown[] = [];
-        if (ddRes.status === 'fulfilled') {
-          const raw = ddRes.value.data;
-          drawdowns = Array.isArray(raw) ? raw : (raw as any)?.data || [];
-        }
-
-        // Build a map: district_id -> sum of drawdowns
-        const fundsReceivedMap: Record<number, number> = {};
-        drawdowns.forEach((dd) => {
-          const did = dd.district_id;
-          fundsReceivedMap[did] = (fundsReceivedMap[did] || 0) + num(dd.amount_withdrawn_rs);
-        });
-
-        // Build a map: district_id -> utilization record
-        const utilMap: Record<number, DistrictUtilization> = {};
-        utilRecords.forEach((u) => {
-          utilMap[u.district_id] = u;
-        });
-
-        // Filter districts for DM users
-        const visibleDistricts = user?.role === UserRole.DM && user.district_id
-          ? districts.filter((d) => d.id === user.district_id)
-          : districts;
-
-        // Build rows
-        const builtRows: DistrictRow[] = visibleDistricts.map((d) => {
-          const utilRecord = utilMap[d.id] || null;
-          const totalUtilized = utilRecord ? calcTotalUtilization(utilRecord) : 0;
-          const fundsReceived = fundsReceivedMap[d.id] || 0;
-          const balance = fundsReceived - totalUtilized;
-          const status = utilRecord?.status || 'pending';
-
-          return {
-            districtId: d.id,
-            districtName: d.name,
-            totalUtilized,
-            fundsReceived,
-            balance,
-            status,
-            utilizationRecord: utilRecord,
-          };
-        });
-
-        setRows(builtRows);
+        setRecords(utilRecords);
       } catch (err: any) {
         setError(err?.response?.data?.message || 'Failed to load data');
       } finally {
@@ -144,18 +92,57 @@ export const UtilizationList: React.FC = () => {
     load();
   }, [user]);
 
-  // ─── Approve / Reject handlers ─────────────────
-  const handleApprove = async (districtId: number) => {
+  // ─── Summary: total across all records, grouped by district ───
+  const summaryByDistrict = useMemo(() => {
+    const map: Record<number, { districtName: string; total: number; count: number }> = {};
+    records.forEach((r) => {
+      const did = r.district_id;
+      if (!map[did]) {
+        map[did] = {
+          districtName: r.district_name || districtMap[did] || `District #${did}`,
+          total: 0,
+          count: 0,
+        };
+      }
+      map[did].total += calcTotalUtilization(r);
+      map[did].count += 1;
+    });
+    return Object.values(map).sort((a, b) => a.districtName.localeCompare(b.districtName));
+  }, [records, districtMap]);
+
+  const grandTotal = useMemo(
+    () => summaryByDistrict.reduce((sum, s) => sum + s.total, 0),
+    [summaryByDistrict]
+  );
+
+  // ─── Action handlers ──────────────────────────────
+  const handleSubmit = async (recordId: number) => {
     if (!season) return;
-    if (!window.confirm('Approve this utilization record?')) return;
-    setActionLoading(districtId);
+    if (!window.confirm('Submit this utilization record for review?')) return;
+    setActionLoading(recordId);
     setMessage(null);
     try {
-      await utilizationAPI.approve(season.id, districtId);
-      setRows((prev) =>
-        prev.map((r) =>
-          r.districtId === districtId ? { ...r, status: 'approved' } : r
-        )
+      await utilizationAPI.submit(season.id, recordId);
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? { ...r, status: 'submitted' as ApprovalStatus } : r))
+      );
+      setMessage({ type: 'success', text: 'Record submitted for review' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to submit' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleApprove = async (recordId: number) => {
+    if (!season) return;
+    if (!window.confirm('Approve this utilization record?')) return;
+    setActionLoading(recordId);
+    setMessage(null);
+    try {
+      await utilizationAPI.approve(season.id, recordId);
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? { ...r, status: 'approved' as ApprovalStatus } : r))
       );
       setMessage({ type: 'success', text: 'Record approved successfully' });
     } catch (err: any) {
@@ -166,19 +153,17 @@ export const UtilizationList: React.FC = () => {
   };
 
   const handleReject = async () => {
-    if (!season || !rejectModalDistrictId) return;
+    if (!season || !rejectModalRecordId) return;
     if (!rejectReason.trim()) return;
-    setActionLoading(rejectModalDistrictId);
+    setActionLoading(rejectModalRecordId);
     setMessage(null);
     try {
-      await utilizationAPI.reject(season.id, rejectModalDistrictId, rejectReason.trim());
-      setRows((prev) =>
-        prev.map((r) =>
-          r.districtId === rejectModalDistrictId ? { ...r, status: 'rejected' } : r
-        )
+      await utilizationAPI.reject(season.id, rejectModalRecordId, rejectReason.trim());
+      setRecords((prev) =>
+        prev.map((r) => (r.id === rejectModalRecordId ? { ...r, status: 'rejected' as ApprovalStatus } : r))
       );
       setMessage({ type: 'success', text: 'Record rejected' });
-      setRejectModalDistrictId(null);
+      setRejectModalRecordId(null);
       setRejectReason('');
     } catch (err: any) {
       setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to reject' });
@@ -187,32 +172,45 @@ export const UtilizationList: React.FC = () => {
     }
   };
 
-  // ─── Navigate helpers ──────────────────────────
-  const goToForm = (districtId: number) => navigate(`/data-entry/utilization/${districtId}`);
-
-  const handleAddNew = () => {
-    // DM users go directly to their district form
-    if (user?.role === UserRole.DM && user.district_id) {
-      goToForm(user.district_id);
-      return;
-    }
-    setShowAddModal(true);
-  };
-
-  const handleAddConfirm = () => {
-    if (addDistrictId > 0) {
-      setShowAddModal(false);
-      goToForm(addDistrictId);
+  const handleDelete = async (recordId: number) => {
+    if (!season) return;
+    if (!window.confirm('Delete this utilization record? This cannot be undone.')) return;
+    setActionLoading(recordId);
+    setMessage(null);
+    try {
+      await utilizationAPI.delete(season.id, recordId);
+      setRecords((prev) => prev.filter((r) => r.id !== recordId));
+      setMessage({ type: 'success', text: 'Record deleted' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to delete' });
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  // Districts without data (for add modal)
-  const districtsWithoutData = useMemo(() => {
-    const existingDistrictIds = new Set(rows.filter((r) => r.status !== 'pending').map((r) => r.districtId));
-    return allDistricts.filter((d) => !existingDistrictIds.has(d.id));
-  }, [rows, allDistricts]);
+  // ─── Helpers ───────────────────────────────────────
+  const getDistrictName = (r: DistrictUtilization) =>
+    r.district_name || districtMap[r.district_id] || `District #${r.district_id}`;
 
-  // ─── Render ────────────────────────────────────
+  const truncate = (text: string | undefined, max: number) => {
+    if (!text) return '--';
+    return text.length > max ? text.slice(0, max) + '...' : text;
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '--';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // ─── Render ────────────────────────────────────────
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto flex items-center justify-center py-20">
@@ -243,15 +241,15 @@ export const UtilizationList: React.FC = () => {
             Fund Utilization
           </h1>
           <button
-            onClick={handleAddNew}
+            onClick={() => navigate('/data-entry/utilization/new')}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-green-500/30 text-sm"
           >
             <Plus className="w-4 h-4" />
-            Add New Fund Utilization
+            Add New Utilization
           </button>
         </div>
         <p className="text-sm text-gray-500 mt-1">
-          District-wise utilization of funds
+          All utilization requests
           {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
         </p>
       </div>
@@ -270,6 +268,32 @@ export const UtilizationList: React.FC = () => {
         </div>
       )}
 
+      {/* Summary Bar */}
+      {summaryByDistrict.length > 0 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">Summary by District</h3>
+            <div className="text-sm font-bold text-green-700">
+              Grand Total: {formatAmount(grandTotal)}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {summaryByDistrict.map((s) => (
+              <div
+                key={s.districtName}
+                className="px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-xs"
+              >
+                <span className="font-semibold text-gray-700">{s.districtName}</span>
+                <span className="text-gray-400 mx-1">|</span>
+                <span className="text-green-600 font-medium">{formatAmount(s.total)}</span>
+                <span className="text-gray-400 mx-1">|</span>
+                <span className="text-gray-500">{s.count} record{s.count !== 1 ? 's' : ''}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -277,19 +301,22 @@ export const UtilizationList: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   District
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Total Utilized
+                  Total Amount
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Funds Received
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Balance
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Remarks
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Created
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Actions
@@ -297,110 +324,145 @@ export const UtilizationList: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {rows.length === 0 ? (
+              {records.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
-                    No districts found.
+                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
+                    No utilization records found. Click "Add New Utilization" to create one.
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => (
-                  <tr key={row.districtId} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {row.districtName}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-700">
-                      {row.status !== 'pending' ? formatAmount(row.totalUtilized) : '--'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-700">
-                      {row.fundsReceived > 0 ? formatAmount(row.fundsReceived) : '--'}
-                    </td>
-                    <td className={`px-4 py-3 text-sm text-right font-medium ${row.balance < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-                      {row.status !== 'pending' || row.fundsReceived > 0
-                        ? formatAmount(row.balance)
-                        : '--'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <StatusBadge status={row.status} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        {/* No data — Add button */}
-                        {row.status === 'pending' && (
-                          <button
-                            onClick={() => goToForm(row.districtId)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Add
-                          </button>
-                        )}
+                records.map((record, idx) => {
+                  const recordId = record.id!;
+                  const status = record.status || 'draft';
+                  const totalAmount = calcTotalUtilization(record);
+                  const isActionLoading = actionLoading === recordId;
 
-                        {/* Draft or Rejected — Edit button */}
-                        {(row.status === 'draft' || row.status === 'rejected') && (
-                          <button
-                            onClick={() => goToForm(row.districtId)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            Edit
-                          </button>
-                        )}
+                  return (
+                    <tr key={recordId} className="hover:bg-gray-50 transition-colors">
+                      {/* # */}
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {idx + 1}
+                      </td>
 
-                        {/* Submitted — View + Approve/Reject */}
-                        {row.status === 'submitted' && (
-                          <>
-                            <button
-                              onClick={() => goToForm(row.districtId)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                            >
-                              <Eye className="w-3 h-3" />
-                              View
-                            </button>
-                            {canApprove && (
-                              <>
-                                <button
-                                  onClick={() => handleApprove(row.districtId)}
-                                  disabled={actionLoading === row.districtId}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                  {actionLoading === row.districtId ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="w-3 h-3" />
-                                  )}
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setRejectModalDistrictId(row.districtId);
-                                    setRejectReason('');
-                                  }}
-                                  disabled={actionLoading === row.districtId}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                  <XCircle className="w-3 h-3" />
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                          </>
-                        )}
+                      {/* District */}
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        {getDistrictName(record)}
+                      </td>
 
-                        {/* Approved — View only */}
-                        {row.status === 'approved' && (
+                      {/* Total Amount */}
+                      <td className="px-4 py-3 text-sm text-right text-gray-700 font-medium">
+                        {formatAmount(totalAmount)}
+                      </td>
+
+                      {/* Remarks */}
+                      <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px]">
+                        {truncate(record.remarks, 40)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge status={status} />
+                      </td>
+
+                      {/* Created Date */}
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {formatDate(record.last_saved_at)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {/* View — always available */}
                           <button
-                            onClick={() => goToForm(row.districtId)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            onClick={() => navigate(`/data-entry/utilization/${recordId}`)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            title="View"
                           >
                             <Eye className="w-3 h-3" />
                             View
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+
+                          {/* Edit — draft or rejected */}
+                          {(status === 'draft' || status === 'rejected') && (
+                            <button
+                              onClick={() => navigate(`/data-entry/utilization/${recordId}`)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              Edit
+                            </button>
+                          )}
+
+                          {/* Delete — draft only */}
+                          {status === 'draft' && (
+                            <button
+                              onClick={() => handleDelete(recordId)}
+                              disabled={isActionLoading}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50"
+                              title="Delete"
+                            >
+                              {isActionLoading ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                              Delete
+                            </button>
+                          )}
+
+                          {/* Submit — draft or rejected (DM action) */}
+                          {(status === 'draft' || status === 'rejected') && (
+                            <button
+                              onClick={() => handleSubmit(recordId)}
+                              disabled={isActionLoading}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                              title="Submit for Review"
+                            >
+                              {isActionLoading ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Send className="w-3 h-3" />
+                              )}
+                              Submit
+                            </button>
+                          )}
+
+                          {/* Approve / Reject — submitted, approver roles only */}
+                          {status === 'submitted' && canApprove && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(recordId)}
+                                disabled={isActionLoading}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                                title="Approve"
+                              >
+                                {isActionLoading ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="w-3 h-3" />
+                                )}
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setRejectModalRecordId(recordId);
+                                  setRejectReason('');
+                                }}
+                                disabled={isActionLoading}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                                title="Reject"
+                              >
+                                <XCircle className="w-3 h-3" />
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -408,13 +470,16 @@ export const UtilizationList: React.FC = () => {
       </div>
 
       {/* Reject Modal */}
-      {rejectModalDistrictId !== null && (
+      {rejectModalRecordId !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Reject Utilization</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Provide a reason for rejecting the utilization record for{' '}
-              <strong>{rows.find((r) => r.districtId === rejectModalDistrictId)?.districtName}</strong>.
+              Provide a reason for rejecting this utilization record
+              {(() => {
+                const rec = records.find((r) => r.id === rejectModalRecordId);
+                return rec ? ` for ${getDistrictName(rec)}` : '';
+              })()}.
             </p>
             <textarea
               value={rejectReason}
@@ -426,7 +491,7 @@ export const UtilizationList: React.FC = () => {
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => {
-                  setRejectModalDistrictId(null);
+                  setRejectModalRecordId(null);
                   setRejectReason('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -435,64 +500,13 @@ export const UtilizationList: React.FC = () => {
               </button>
               <button
                 onClick={handleReject}
-                disabled={!rejectReason.trim() || actionLoading === rejectModalDistrictId}
+                disabled={!rejectReason.trim() || actionLoading === rejectModalRecordId}
                 className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
               >
-                {actionLoading === rejectModalDistrictId ? (
+                {actionLoading === rejectModalRecordId ? (
                   <Loader2 className="w-4 h-4 animate-spin inline mr-1" />
                 ) : null}
                 Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add District Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Select District</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Choose a district to add fund utilization data.
-            </p>
-            <select
-              value={addDistrictId}
-              onChange={(e) => setAddDistrictId(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            >
-              <option value={0}>-- Select a district --</option>
-              {districtsWithoutData.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-              {/* Also show districts with data so admin can navigate to any */}
-              {allDistricts
-                .filter((d) => !districtsWithoutData.find((dw) => dw.id === d.id))
-                .map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} (has data)
-                  </option>
-                ))}
-            </select>
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setAddDistrictId(0);
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddConfirm}
-                disabled={addDistrictId === 0}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <ArrowRight className="w-4 h-4" />
-                Continue
               </button>
             </div>
           </div>

@@ -108,16 +108,22 @@ export const drawdownsAPI = {
 export const utilizationAPI = {
   listAll: (seasonId: number) =>
     apiClient.get<DistrictUtilization[]>(`/utilization/${seasonId}`),
-  get: (seasonId: number, districtId: number) =>
-    apiClient.get<DistrictUtilization>(`/utilization/${seasonId}/${districtId}`),
-  upsert: (seasonId: number, districtId: number, data: any) =>
-    apiClient.put<DistrictUtilization>(`/utilization/${seasonId}/${districtId}`, data),
-  submit: (seasonId: number, districtId: number) =>
-    apiClient.post(`/utilization/${seasonId}/${districtId}/submit`),
-  approve: (seasonId: number, districtId: number) =>
-    apiClient.post(`/utilization/${seasonId}/${districtId}/approve`),
-  reject: (seasonId: number, districtId: number, reason: string) =>
-    apiClient.post(`/utilization/${seasonId}/${districtId}/reject`, { reason }),
+  listByDistrict: (seasonId: number, districtId: number) =>
+    apiClient.get<DistrictUtilization[]>(`/utilization/${seasonId}/district/${districtId}`),
+  get: (seasonId: number, id: number) =>
+    apiClient.get<DistrictUtilization>(`/utilization/${seasonId}/record/${id}`),
+  create: (seasonId: number, data: any) =>
+    apiClient.post<DistrictUtilization>(`/utilization/${seasonId}`, data),
+  update: (seasonId: number, id: number, data: any) =>
+    apiClient.patch<DistrictUtilization>(`/utilization/${seasonId}/${id}`, data),
+  delete: (seasonId: number, id: number) =>
+    apiClient.delete(`/utilization/${seasonId}/${id}`),
+  submit: (seasonId: number, id: number) =>
+    apiClient.post(`/utilization/${seasonId}/${id}/submit`),
+  approve: (seasonId: number, id: number) =>
+    apiClient.post(`/utilization/${seasonId}/${id}/approve`),
+  reject: (seasonId: number, id: number, reason: string) =>
+    apiClient.post(`/utilization/${seasonId}/${id}/reject`, { reason }),
 };
 
 // ─── District Farmers (DM) ───────────────────────

@@ -1,13 +1,14 @@
 // ============================================
 // pages/data-entry/UtilizationForm.tsx — Dynamic Utilization Heads
-// DM fills utilization per their district (districtId from URL param)
+// Supports creating new records and editing existing records by ID
+// Route: /data-entry/utilization/new  OR  /data-entry/utilization/:id
 // ============================================
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Save, Send, AlertCircle, CheckCircle, PieChart, Loader2, XCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { utilizationAPI, utilizationHeadsAPI, drawdownsAPI, districtsAPI, seasonsAPI } from '../../api/services';
-import type { UtilizationHead, Season, DistrictDrawdown, ApprovalStatus } from '../../types/markfed';
+import type { UtilizationHead, Season, District, DistrictDrawdown, ApprovalStatus } from '../../types/markfed';
 import { UserRole, formatAmount, num } from '../../types/markfed';
 
 // ─── Status Badge ────────────────────────────────
@@ -36,18 +37,23 @@ interface FormState {
 const emptyForm: FormState = { remarks: '', values: {} };
 
 export const UtilizationForm: React.FC = () => {
-  const { districtId: districtIdParam } = useParams<{ districtId: string }>();
+  const { id: idParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, canEditField } = useAuth();
   const baseCanEdit = canEditField('utilization');
 
-  const selectedDistrictId = parseInt(districtIdParam || '0');
+  const isCreateMode = !idParam || idParam === 'new';
+  const recordId = isCreateMode ? null : parseInt(idParam);
 
   // Core data
   const [season, setSeason] = useState<Season | null>(null);
-  const [districtName, setDistrictName] = useState<string>('');
+  const [districts, setDistricts] = useState<District[]>([]);
   const [heads, setHeads] = useState<UtilizationHead[]>([]);
   const [drawdowns, setDrawdowns] = useState<DistrictDrawdown[]>([]);
+
+  // Selected district (for create mode, user picks; for edit mode, loaded from record)
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number>(0);
+  const [districtName, setDistrictName] = useState<string>('');
 
   // Form
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -63,17 +69,12 @@ export const UtilizationForm: React.FC = () => {
   const isLocked = status === 'submitted' || status === 'approved';
   const canEdit = baseCanEdit && !isLocked;
 
-  // DM enforcement: if DM user, their district_id must match the URL param
-  useEffect(() => {
-    if (user?.role === UserRole.DM && user.district_id && selectedDistrictId !== user.district_id) {
-      navigate(`/data-entry/utilization/${user.district_id}`, { replace: true });
-    }
-  }, [user, selectedDistrictId, navigate]);
+  // DM users are locked to their district
+  const isDM = user?.role === UserRole.DM;
+  const dmDistrictId = isDM ? user?.district_id || 0 : 0;
 
-  // ─── Load season, district name, utilization heads on mount ───
+  // ─── Load initial data (season, districts, heads) ─────
   useEffect(() => {
-    if (!selectedDistrictId) return;
-
     const load = async () => {
       try {
         const [seasonRes, distRes, headsRes] = await Promise.all([
@@ -82,15 +83,45 @@ export const UtilizationForm: React.FC = () => {
           utilizationHeadsAPI.list({ is_active: true }),
         ]);
         setSeason(seasonRes.data);
-
-        // Find district name from list
-        const districts = distRes.data;
-        const district = districts.find((d: any) => d.id === selectedDistrictId);
-        setDistrictName(district?.name || `District #${selectedDistrictId}`);
+        setDistricts(distRes.data);
 
         // Sort heads by display_order
         const sortedHeads = [...headsRes.data].sort((a, b) => a.display_order - b.display_order);
         setHeads(sortedHeads);
+
+        // For DM in create mode, pre-select their district
+        if (isCreateMode && isDM && dmDistrictId) {
+          setSelectedDistrictId(dmDistrictId);
+          const dist = distRes.data.find((d: District) => d.id === dmDistrictId);
+          setDistrictName(dist?.name || `District #${dmDistrictId}`);
+        }
+
+        // For edit mode, load the existing record
+        if (!isCreateMode && recordId && seasonRes.data) {
+          try {
+            const utilRes = await utilizationAPI.get(seasonRes.data.id, recordId);
+            const raw = utilRes.data;
+
+            // Set district from loaded record
+            setSelectedDistrictId(raw.district_id);
+            const dist = distRes.data.find((d: District) => d.id === raw.district_id);
+            setDistrictName(dist?.name || raw.district_name || `District #${raw.district_id}`);
+
+            // Build values map from entries array
+            const values: Record<number, number> = {};
+            if (raw.entries && raw.entries.length > 0) {
+              for (const entry of raw.entries) {
+                values[entry.utilization_head_id] = num(entry.amount_rs);
+              }
+            }
+
+            setForm({ remarks: raw.remarks || '', values });
+            setStatus((raw.status as ApprovalStatus) || 'draft');
+            setRejectionReason(raw.rejection_reason || '');
+          } catch (err: any) {
+            setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to load utilization record' });
+          }
+        }
       } catch {
         setMessage({ type: 'error', text: 'Failed to load initial data' });
       } finally {
@@ -98,52 +129,37 @@ export const UtilizationForm: React.FC = () => {
       }
     };
     load();
-  }, [selectedDistrictId]);
+  }, [isCreateMode, recordId, isDM, dmDistrictId]);
 
-  // ─── Load utilization + drawdown data when district/season ready ───
+  // ─── Load drawdowns when district is selected ─────
   useEffect(() => {
-    if (!season || !selectedDistrictId) return;
+    if (!season || !selectedDistrictId) {
+      setDrawdowns([]);
+      return;
+    }
 
-    const load = async () => {
+    const loadDrawdowns = async () => {
       try {
-        const [utilRes, ddRes] = await Promise.allSettled([
-          utilizationAPI.get(season.id, selectedDistrictId),
-          drawdownsAPI.getByDistrict(season.id, selectedDistrictId),
-        ]);
-
-        if (utilRes.status === 'fulfilled') {
-          const raw = utilRes.value.data;
-
-          // Build values map from entries array
-          const values: Record<number, number> = {};
-          if (raw.entries && raw.entries.length > 0) {
-            for (const entry of raw.entries) {
-              values[entry.utilization_head_id] = num(entry.amount_rs);
-            }
-          }
-
-          setForm({ remarks: raw.remarks || '', values });
-          setStatus((raw.status as ApprovalStatus) || 'draft');
-          setRejectionReason(raw.rejection_reason || '');
-        } else {
-          setForm(emptyForm);
-          setStatus('draft');
-          setRejectionReason('');
-        }
-
-        if (ddRes.status === 'fulfilled') {
-          setDrawdowns(
-            ddRes.value.data.map((d: any) => ({ ...d, amount_withdrawn_rs: num(d.amount_withdrawn_rs) }))
-          );
-        } else {
-          setDrawdowns([]);
-        }
+        const ddRes = await drawdownsAPI.getByDistrict(season.id, selectedDistrictId);
+        setDrawdowns(
+          ddRes.data.map((d: any) => ({ ...d, amount_withdrawn_rs: num(d.amount_withdrawn_rs) }))
+        );
       } catch {
-        /* handled by allSettled */
+        setDrawdowns([]);
       }
     };
-    load();
+    loadDrawdowns();
   }, [season, selectedDistrictId]);
+
+  // ─── District selection handler (create mode) ─────
+  const handleDistrictChange = useCallback(
+    (distId: number) => {
+      setSelectedDistrictId(distId);
+      const dist = districts.find((d) => d.id === distId);
+      setDistrictName(dist?.name || '');
+    },
+    [districts]
+  );
 
   // ─── Computed values ───────────────────────────────
   const totalUtilised = useMemo(
@@ -172,7 +188,13 @@ export const UtilizationForm: React.FC = () => {
   }, []);
 
   const handleSave = async (submit: boolean = false) => {
-    if (!season || !selectedDistrictId) return;
+    if (!season) return;
+
+    // Validate district is selected
+    if (!selectedDistrictId) {
+      setMessage({ type: 'error', text: 'Please select a district' });
+      return;
+    }
 
     if (submit) {
       const allZero = heads.every((h) => !form.values[h.id] || form.values[h.id] === 0);
@@ -188,6 +210,7 @@ export const UtilizationForm: React.FC = () => {
 
     try {
       const payload = {
+        district_id: selectedDistrictId,
         remarks: form.remarks,
         entries: heads.map((h) => ({
           utilization_head_id: h.id,
@@ -195,15 +218,35 @@ export const UtilizationForm: React.FC = () => {
         })),
       };
 
-      await utilizationAPI.upsert(season.id, selectedDistrictId, payload);
+      if (isCreateMode) {
+        // Create new record
+        const res = await utilizationAPI.create(season.id, payload);
+        const newId = res.data.id;
 
-      if (submit) {
-        await utilizationAPI.submit(season.id, selectedDistrictId);
-        setStatus('submitted');
-        setMessage({ type: 'success', text: 'Data submitted successfully for review' });
-      } else {
-        setMessage({ type: 'success', text: 'Draft saved successfully' });
-        setTimeout(() => setMessage(null), 3000);
+        if (submit && newId) {
+          await utilizationAPI.submit(season.id, newId);
+          setStatus('submitted');
+          setMessage({ type: 'success', text: 'Record created and submitted for review' });
+        } else {
+          setMessage({ type: 'success', text: 'Record created as draft' });
+        }
+
+        // Navigate to the newly created record
+        if (newId) {
+          navigate(`/data-entry/utilization/${newId}`, { replace: true });
+        }
+      } else if (recordId) {
+        // Update existing record
+        await utilizationAPI.update(season.id, recordId, payload);
+
+        if (submit) {
+          await utilizationAPI.submit(season.id, recordId);
+          setStatus('submitted');
+          setMessage({ type: 'success', text: 'Data submitted successfully for review' });
+        } else {
+          setMessage({ type: 'success', text: 'Draft saved successfully' });
+          setTimeout(() => setMessage(null), 3000);
+        }
       }
     } catch (err: any) {
       setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to save' });
@@ -218,24 +261,6 @@ export const UtilizationForm: React.FC = () => {
       <div className="max-w-4xl mx-auto flex items-center justify-center py-20">
         <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
         <span className="ml-2 text-gray-500">Loading...</span>
-      </div>
-    );
-  }
-
-  if (!selectedDistrictId) {
-    return (
-      <div className="max-w-4xl mx-auto py-10">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700 text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          Invalid district. Please go back and select a district.
-        </div>
-        <button
-          onClick={() => navigate('/data-entry/utilization')}
-          className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to List
-        </button>
       </div>
     );
   }
@@ -256,20 +281,44 @@ export const UtilizationForm: React.FC = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <PieChart className="w-7 h-7 text-green-600" />
-            Fund Utilization
+            {isCreateMode ? 'New Fund Utilization' : 'Fund Utilization'}
           </h1>
-          <StatusBadge status={status} />
+          {!isCreateMode && <StatusBadge status={status} />}
         </div>
         <p className="text-sm text-gray-500 mt-1">
-          District-wise utilization of funds
+          {isCreateMode ? 'Create a new utilization request' : 'View / edit utilization record'}
           {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
         </p>
       </div>
 
-      {/* District indicator */}
-      <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
-        <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
-      </div>
+      {/* District selector (create mode) or display (edit mode) */}
+      {isCreateMode ? (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+          {isDM ? (
+            <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
+              <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
+            </div>
+          ) : (
+            <select
+              value={selectedDistrictId}
+              onChange={(e) => handleDistrictChange(parseInt(e.target.value))}
+              className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            >
+              <option value={0}>-- Select a district --</option>
+              {districts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      ) : (
+        <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
+          <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
+        </div>
+      )}
 
       {/* Rejection reason banner */}
       {status === 'rejected' && rejectionReason && (
@@ -291,23 +340,25 @@ export const UtilizationForm: React.FC = () => {
       )}
 
       {/* Drawdown Info (read-only) */}
-      <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Funds Received from HOD</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-gray-500">Total Received</p>
-            <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">Drawdown Entries</p>
-            <p className="text-sm text-gray-700">
-              {drawdowns.length > 0
-                ? `${drawdowns.length} transfer(s)`
-                : 'No drawdowns recorded for this district'}
-            </p>
+      {selectedDistrictId > 0 && (
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Funds Received from HOD</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500">Total Received</p>
+              <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Drawdown Entries</p>
+              <p className="text-sm text-gray-700">
+                {drawdowns.length > 0
+                  ? `${drawdowns.length} transfer(s)`
+                  : 'No drawdowns recorded for this district'}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Over-utilization warning */}
       {overUtilised && (
@@ -339,7 +390,7 @@ export const UtilizationForm: React.FC = () => {
         </div>
       )}
 
-      {/* Utilization Form — dynamic fields */}
+      {/* Utilization Form -- dynamic fields */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         {heads.length === 0 ? (
           <p className="text-center text-gray-400 py-8">No utilization heads configured. Contact the administrator.</p>
@@ -415,7 +466,7 @@ export const UtilizationForm: React.FC = () => {
               className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save Draft
+              {isCreateMode ? 'Save as Draft' : 'Save Draft'}
             </button>
             <button
               onClick={() => handleSave(true)}
