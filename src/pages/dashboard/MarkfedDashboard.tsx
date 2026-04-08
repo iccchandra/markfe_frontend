@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { dashboardAPI, seasonsAPI, exportAPI } from '../../api/services';
+import { dashboardAPI, seasonsAPI, exportAPI, farmersAPI } from '../../api/services';
+import type { DistrictFarmers } from '../../types/markfed';
 import { UserRole, formatAmount, num } from '../../types/markfed';
 import type { Season, DashboardSummary, DistrictSummaryRow } from '../../types/markfed';
 
@@ -21,6 +22,8 @@ export const MarkfedDashboard: React.FC = () => {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedDistrict, setExpandedDistrict] = useState<number | null>(null);
+  const [pacsRows, setPacsRows] = useState<DistrictFarmers[]>([]);
 
   // Load seasons on mount
   useEffect(() => {
@@ -82,6 +85,21 @@ export const MarkfedDashboard: React.FC = () => {
   const handleSeasonChange = (seasonId: number) => {
     const s = seasons.find((x) => x.id === seasonId);
     if (s) setSeason({ ...s, msp_rate: num(s.msp_rate), total_sanctioned_cr: num(s.total_sanctioned_cr) });
+  };
+
+  const handleDistrictClick = async (districtId: number) => {
+    if (expandedDistrict === districtId) {
+      setExpandedDistrict(null);
+      setPacsRows([]);
+      return;
+    }
+    if (!season) return;
+    setExpandedDistrict(districtId);
+    try {
+      const res = await farmersAPI.listByDistrict(season.id, districtId);
+      const data = Array.isArray(res.data) ? res.data : (res.data as any)?.data || [];
+      setPacsRows(data);
+    } catch { setPacsRows([]); }
   };
 
   const handleExportExcel = async () => {
@@ -314,23 +332,73 @@ export const MarkfedDashboard: React.FC = () => {
           <tbody>
             {districtRows.map((d) => {
               const isMyDistrict = user?.role === UserRole.DM && user.district_id === d.district_id;
+              const isExpanded = expandedDistrict === d.district_id;
               return (
-                <tr
-                  key={d.district_id}
-                  className={`border-b hover:bg-gray-50 ${isMyDistrict ? 'bg-yellow-50' : ''}`}
-                >
-                  <td className="px-4 py-3 font-medium">{d.district_name}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.amount_received_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.farmers_paid_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.gunnies_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.transportation_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.unloading_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.storage_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-bold bg-gray-50">{formatAmount(d.total_utilised_rs)}</td>
-                  <td className={`px-4 py-3 text-right font-mono text-xs ${d.balance_rs < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatAmount(d.balance_rs)}
-                  </td>
-                </tr>
+                <React.Fragment key={d.district_id}>
+                  <tr
+                    onClick={() => handleDistrictClick(d.district_id)}
+                    className={`border-b hover:bg-gray-100 cursor-pointer ${isMyDistrict ? 'bg-yellow-50' : ''}`}
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      <span className="mr-1 text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+                      {d.district_name}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.amount_received_rs)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.farmers_paid_rs)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.gunnies_rs)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.transportation_rs)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.unloading_rs)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.storage_rs)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs font-bold bg-gray-50">{formatAmount(d.total_utilised_rs)}</td>
+                    <td className={`px-4 py-3 text-right font-mono text-xs ${d.balance_rs < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {formatAmount(d.balance_rs)}
+                    </td>
+                  </tr>
+                  {/* PACS drilldown rows */}
+                  {isExpanded && (
+                    <>
+                      {pacsRows.length === 0 ? (
+                        <tr className="bg-gray-50">
+                          <td colSpan={9} className="px-8 py-2 text-xs text-gray-400 italic">No farmer records for this district</td>
+                        </tr>
+                      ) : (
+                        <>
+                          <tr className="bg-gray-100">
+                            <td className="px-8 py-1.5 text-[10px] font-semibold text-gray-500">PACS/DCMS/FPO</td>
+                            <td className="px-4 py-1.5 text-[10px] font-semibold text-gray-500 text-center">Type</td>
+                            <td className="px-4 py-1.5 text-[10px] font-semibold text-gray-500 text-right">Farmers</td>
+                            <td className="px-4 py-1.5 text-[10px] font-semibold text-gray-500 text-right">Qty (Qtl)</td>
+                            <td className="px-4 py-1.5 text-[10px] font-semibold text-gray-500 text-right">Cost</td>
+                            <td className="px-4 py-1.5 text-[10px] font-semibold text-gray-500 text-right">Released</td>
+                            <td className="px-4 py-1.5 text-[10px] font-semibold text-gray-500 text-right">Status</td>
+                            <td colSpan={2} className="px-4 py-1.5 text-[10px] font-semibold text-gray-500">Remarks</td>
+                          </tr>
+                          {pacsRows.map((p: any) => (
+                            <tr key={p.id} className="bg-gray-50/70 border-b border-gray-100">
+                              <td className="px-8 py-1.5 text-xs text-gray-700">{p.pacs_entity?.name || '-'}</td>
+                              <td className="px-4 py-1.5 text-xs text-center">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">{p.pacs_entity?.type || '-'}</span>
+                              </td>
+                              <td className="px-4 py-1.5 text-xs text-right">{num(p.farmers_count).toLocaleString('en-IN')}</td>
+                              <td className="px-4 py-1.5 text-xs text-right">{num(p.quantity_procured_qtl).toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
+                              <td className="px-4 py-1.5 text-xs text-right font-mono">{formatAmount(num(p.quantity_procured_qtl) * num(season?.msp_rate))}</td>
+                              <td className="px-4 py-1.5 text-xs text-right font-mono">{formatAmount(num(p.payment_released_to_farmers_rs))}</td>
+                              <td className="px-4 py-1.5 text-xs text-right">
+                                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                  p.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                  p.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
+                                  p.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-500'
+                                }`}>{p.status || 'draft'}</span>
+                              </td>
+                              <td colSpan={2} className="px-4 py-1.5 text-xs text-gray-500 truncate max-w-[150px]">{p.remarks || '-'}</td>
+                            </tr>
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
+                </React.Fragment>
               );
             })}
             {districtRows.length === 0 && (
