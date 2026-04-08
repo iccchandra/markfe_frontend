@@ -104,8 +104,9 @@ export const UtilizationForm: React.FC = () => {
 
           // Build values map from entries array
           const values: Record<number, number> = {};
-          if (raw.entries && raw.entries.length > 0) {
-            for (const entry of raw.entries) {
+          const entries = raw.dynamic_entries || raw.entries || [];
+          if (entries.length > 0) {
+            for (const entry of entries) {
               values[entry.utilization_head_id] = num(entry.amount_rs);
             }
           }
