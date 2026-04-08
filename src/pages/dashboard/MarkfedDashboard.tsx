@@ -98,12 +98,20 @@ export const MarkfedDashboard: React.FC = () => {
     } catch { alert('Export failed'); }
   };
 
-  // Filter district rows — only approved utilization shown on dashboard
+  // Show all districts but only approved utilization data, others show 0
   const allRows: DistrictSummaryRow[] = summary?.district_wise_summary || [];
   const districtRows: DistrictSummaryRow[] = (user?.role === UserRole.DM && user.district_id
-    ? allRows.filter((d) => d.district_id === user.district_id && (d as any).status === 'approved')
-    : allRows.filter((d) => (d as any).status === 'approved')
-  );
+    ? allRows.filter((d) => d.district_id === user.district_id)
+    : allRows
+  ).map(d => {
+    if ((d as any).status === 'approved') return d;
+    return {
+      ...d,
+      farmers_paid_rs: 0, gunnies_rs: 0, transportation_rs: 0,
+      unloading_rs: 0, storage_rs: 0, total_utilised_rs: 0,
+      balance_rs: d.amount_received_rs,
+    };
+  });
 
   // Totals
   const districtTotals = districtRows.reduce(
