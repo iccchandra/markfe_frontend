@@ -98,12 +98,25 @@ export const MarkfedDashboard: React.FC = () => {
     } catch { alert('Export failed'); }
   };
 
-  // Filter district rows for DM
-  const districtRows: DistrictSummaryRow[] = summary?.district_wise_summary
-    ? (user?.role === UserRole.DM && user.district_id
-        ? summary.district_wise_summary.filter((d) => d.district_id === user.district_id)
-        : summary.district_wise_summary)
-    : [];
+  // Filter district rows — DM sees own district, all roles see only approved utilization data
+  const allRows: DistrictSummaryRow[] = summary?.district_wise_summary || [];
+  const districtRows: DistrictSummaryRow[] = (user?.role === UserRole.DM && user.district_id
+    ? allRows.filter((d) => d.district_id === user.district_id)
+    : allRows
+  ).map(d => {
+    // Only show utilization amounts for approved districts
+    const isApproved = (d as any).status === 'approved';
+    return isApproved ? d : {
+      ...d,
+      farmers_paid_rs: 0,
+      gunnies_rs: 0,
+      transportation_rs: 0,
+      unloading_rs: 0,
+      storage_rs: 0,
+      total_utilised_rs: 0,
+      balance_rs: d.amount_received_rs,
+    };
+  });
 
   // Totals
   const districtTotals = districtRows.reduce(
@@ -235,7 +248,8 @@ export const MarkfedDashboard: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500 uppercase tracking-wider">Total Utilised</p>
-            <p className="text-2xl font-bold text-purple-600 mt-1">{formatAmount(summary?.total_utilised_rs || 0)}</p>
+            <p className="text-2xl font-bold text-purple-600 mt-1">{formatAmount(districtTotals.total_utilised_rs)}</p>
+            <p className="text-xs text-gray-400 mt-1">Approved only</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -245,8 +259,8 @@ export const MarkfedDashboard: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500 uppercase tracking-wider">Balance</p>
-            <p className={`text-2xl font-bold mt-1 ${(summary?.total_balance_rs || 0) < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-              {formatAmount(summary?.total_balance_rs || 0)}
+            <p className={`text-2xl font-bold mt-1 ${districtTotals.balance_rs < 0 ? 'text-red-600' : 'text-orange-600'}`}>
+              {formatAmount(districtTotals.balance_rs)}
             </p>
             <p className="text-xs text-gray-400 mt-1">Drawn - Utilised</p>
           </div>
