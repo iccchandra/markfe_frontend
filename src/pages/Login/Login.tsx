@@ -63,9 +63,13 @@ export const MarkfedLogin: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">TG MARKFED</h1>
-          <p className="text-sm text-gray-600">Telangana Cooperative Marketing Federation Ltd.</p>
-          <p className="text-gray-500 text-xs mt-1">Maize MSP Data Entry Portal</p>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <img src={process.env.PUBLIC_URL + "/telangana-govt.png"} alt="Telangana Govt" className="w-16 h-16 object-contain" />
+            <img src={process.env.PUBLIC_URL + "/markfed-logo.png"} alt="TG MARKFED" className="w-20 h-20 object-contain" />
+            <img src={process.env.PUBLIC_URL + "/tg-rising.jpeg"} alt="Telangana Rising" className="w-16 h-16 object-contain" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">Telangana Cooperative Marketing Federation Ltd.</h1>
+          <p className="text-sm text-gray-600 mt-1">Maize MSP Data Entry Portal</p>
         </div>
 
         {/* Login Form */}
