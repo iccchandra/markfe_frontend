@@ -24,9 +24,7 @@ export const AdminLayout: React.FC = () => {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <div className="mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-3">
-              <span className="text-white font-bold text-2xl">M</span>
-            </div>
+            <img src={process.env.PUBLIC_URL + "/markfed-logo.png"} alt="TG MARKFED" className="w-16 h-16 object-contain mx-auto mb-3" />
           </div>
           <p className="text-gray-700 font-semibold text-lg">Loading MARKFED...</p>
           <p className="text-gray-500 text-sm mt-1">Please wait</p>
@@ -100,21 +98,19 @@ export const AdminLayout: React.FC = () => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="p-6">
+          <div className="p-3 sm:p-4 md:p-6">
             <Outlet />
           </div>
         </main>
 
         {/* Footer (Optional) */}
-        <footer className="bg-white border-t border-gray-200 py-3 px-6">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div>
-              © 2026 MARKFED Telangana. All rights reserved.
-            </div>
-            <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-blue-600 transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">Help Center</a>
+        <footer className="bg-white border-t border-gray-200 py-2 px-3 sm:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-1">
+            <div>© 2026 MARKFED Telangana</div>
+            <div className="hidden sm:flex items-center gap-4">
+              <a href="#" className="hover:text-blue-600 transition-colors">Privacy</a>
+              <a href="#" className="hover:text-blue-600 transition-colors">Terms</a>
+              <a href="#" className="hover:text-blue-600 transition-colors">Help</a>
             </div>
           </div>
         </footer>
@@ -139,9 +135,7 @@ export const MarkfedGridLayout: React.FC = () => {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <div className="mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-3">
-              <span className="text-white font-bold text-2xl">M</span>
-            </div>
+            <img src={process.env.PUBLIC_URL + "/markfed-logo.png"} alt="TG MARKFED" className="w-16 h-16 object-contain mx-auto mb-3" />
           </div>
           <p className="text-gray-700 font-semibold text-lg">Loading MARKFED...</p>
           <p className="text-gray-500 text-sm mt-1">Please wait</p>
@@ -171,20 +165,18 @@ export const MarkfedGridLayout: React.FC = () => {
         <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
         
         <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="p-6">
+          <div className="p-3 sm:p-4 md:p-6">
             <Outlet />
           </div>
         </main>
 
-        <footer className="bg-white border-t border-gray-200 py-3 px-6">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div>
-              © 2026 MARKFED Telangana. All rights reserved.
-            </div>
-            <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-blue-600 transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">Terms of Service</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">Help Center</a>
+        <footer className="bg-white border-t border-gray-200 py-2 px-3 sm:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-1">
+            <div>© 2026 MARKFED Telangana</div>
+            <div className="hidden sm:flex items-center gap-4">
+              <a href="#" className="hover:text-blue-600 transition-colors">Privacy</a>
+              <a href="#" className="hover:text-blue-600 transition-colors">Terms</a>
+              <a href="#" className="hover:text-blue-600 transition-colors">Help</a>
             </div>
           </div>
         </footer>

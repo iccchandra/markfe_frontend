@@ -83,7 +83,7 @@ export const AdminHeader: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0 sticky top-0 z-40">
-      <div className="flex items-center justify-between h-16 px-6">
+      <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6">
         {/* Left Section - Menu & Logo */}
         <div className="flex items-center flex-1">
           <button
@@ -94,6 +94,13 @@ export const AdminHeader: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </button>
           
           <div className="flex items-center gap-2">
+            <img src={process.env.PUBLIC_URL + "/telangana-govt.png"} alt="Telangana Govt" className="w-8 h-8 sm:w-9 sm:h-9 object-contain" />
+            <img src={process.env.PUBLIC_URL + "/markfed-logo.png"} alt="TG MARKFED" className="w-8 h-8 sm:w-9 sm:h-9 object-contain" />
+            <img src={process.env.PUBLIC_URL + "/tg-rising.jpeg"} alt="TG Rising" className="w-8 h-8 sm:w-9 sm:h-9 object-contain" />
+            <div className="hidden sm:block ml-1">
+              <h1 className="text-sm font-bold text-gray-900">TG MARKFED</h1>
+              <p className="text-[10px] text-gray-500">Maize MSP Portal</p>
+            </div>
           </div>
 
           {/* Desktop Search */}
@@ -112,7 +119,7 @@ export const AdminHeader: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
 
         {/* Right Section - Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
           {/* Notifications */}
           <div className="relative">
             <button
