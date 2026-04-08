@@ -47,13 +47,18 @@ export const DrawdownsForm: React.FC = () => {
         setDistricts(distRes.data);
 
         try {
-          const loanRes = await loanSanctionAPI.get(seasonRes.data.id);
-          setLoan({
-            ...loanRes.data,
-            total_sanctioned_cr: num(loanRes.data.total_sanctioned_cr),
-            total_drawn_cr: num(loanRes.data.total_drawn_cr),
-          });
-        } catch { /* no loan record yet */ }
+          const loanRes = await loanSanctionAPI.list(seasonRes.data.id);
+          const loanRows: LoanSanction[] = Array.isArray(loanRes.data) ? loanRes.data : (loanRes.data as any)?.data || [];
+          if (loanRows.length > 0) {
+            const totalSanctioned = loanRows.reduce((s, r) => s + num(r.total_sanctioned_cr), 0);
+            const totalDrawn = loanRows.reduce((s, r) => s + num(r.total_drawn_cr), 0);
+            setLoan({
+              ...loanRows[0],
+              total_sanctioned_cr: totalSanctioned,
+              total_drawn_cr: totalDrawn,
+            });
+          }
+        } catch { /* no loan records yet */ }
 
         try {
           const { data } = await drawdownsAPI.list(seasonRes.data.id);

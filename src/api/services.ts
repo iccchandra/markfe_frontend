@@ -70,12 +70,19 @@ export const seasonsAPI = {
 
 // ─── Loan Sanction (AO_CAO) ──────────────────────
 export const loanSanctionAPI = {
-  get: (seasonId: number) => apiClient.get<LoanSanction>(`/loan-sanction/${seasonId}`),
-  upsert: (seasonId: number, data: Partial<LoanSanction>) =>
-    apiClient.put<LoanSanction>(`/loan-sanction/${seasonId}`, data),
-  submit: (seasonId: number) => apiClient.post(`/loan-sanction/${seasonId}/submit`),
-  approve: (seasonId: number) => apiClient.post(`/loan-sanction/${seasonId}/approve`),
-  reject: (seasonId: number, reason: string) => apiClient.post(`/loan-sanction/${seasonId}/reject`, { reason }),
+  list: (seasonId: number) => apiClient.get<LoanSanction[]>(`/loan-sanction/${seasonId}`),
+  create: (seasonId: number, data: Partial<LoanSanction>) =>
+    apiClient.post<LoanSanction>(`/loan-sanction/${seasonId}`, data),
+  update: (seasonId: number, id: number, data: Partial<LoanSanction>) =>
+    apiClient.patch<LoanSanction>(`/loan-sanction/${seasonId}/${id}`, data),
+  delete: (seasonId: number, id: number) =>
+    apiClient.delete(`/loan-sanction/${seasonId}/${id}`),
+  submit: (seasonId: number, id: number) =>
+    apiClient.post(`/loan-sanction/${seasonId}/${id}/submit`),
+  approve: (seasonId: number, id: number) =>
+    apiClient.post(`/loan-sanction/${seasonId}/${id}/approve`),
+  reject: (seasonId: number, id: number, reason: string) =>
+    apiClient.post(`/loan-sanction/${seasonId}/${id}/reject`, { reason }),
 };
 
 // ─── District Drawdowns (AO_CAO) ─────────────────

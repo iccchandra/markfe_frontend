@@ -53,14 +53,24 @@ export const MDSheetView: React.FC = () => {
         distRes.data.forEach((d: District) => districtMap.set(d.id, d.name));
 
         const [loanRes, ddRes, utilRes] = await Promise.allSettled([
-          loanSanctionAPI.get(activeSeason.id),
+          loanSanctionAPI.list(activeSeason.id),
           drawdownsAPI.list(activeSeason.id),
           utilizationAPI.listAll(activeSeason.id),
         ]);
 
         if (loanRes.status === 'fulfilled') {
-          const l = loanRes.value.data;
-          setLoan({ ...l, total_sanctioned_cr: num(l.total_sanctioned_cr), total_drawn_cr: num(l.total_drawn_cr) });
+          const loanRows: LoanSanction[] = Array.isArray(loanRes.value.data)
+            ? loanRes.value.data
+            : (loanRes.value.data as any)?.data || [];
+          if (loanRows.length > 0) {
+            const totalSanctioned = loanRows.reduce((s, r) => s + num(r.total_sanctioned_cr), 0);
+            const totalDrawn = loanRows.reduce((s, r) => s + num(r.total_drawn_cr), 0);
+            setLoan({
+              ...loanRows[0],
+              total_sanctioned_cr: totalSanctioned,
+              total_drawn_cr: totalDrawn,
+            });
+          }
         }
 
         const drawdowns: DistrictDrawdown[] = ddRes.status === 'fulfilled' ? ddRes.value.data : [];
