@@ -1,6 +1,6 @@
 // ============================================
 // pages/reports/FarmersSheetView.tsx — District Farmers Sheet (Read-Only)
-// Cols 27-37 consolidated view
+// Consolidated farmers view
 // ============================================
 import React, { useState, useEffect, useMemo } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
@@ -143,7 +143,7 @@ export const FarmersSheetView: React.FC = () => {
             District Farmers Sheet Report
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Columns 27-37 | Farmer procurement & payment tracking
+            Farmer procurement & payment tracking
             {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
           </p>
         </div>
@@ -160,17 +160,17 @@ export const FarmersSheetView: React.FC = () => {
         <table className="w-full text-xs whitespace-nowrap">
           <thead>
             <tr className="bg-gray-100 border-b">
-              <th className="px-3 py-2 text-left border-r">Col 27 - District</th>
-              <th className="px-3 py-2 text-right border-r bg-green-50">Col 28 - PACS Count</th>
-              <th className="px-3 py-2 text-left border-r bg-green-50">Col 29 - PACS Name</th>
-              <th className="px-3 py-2 text-right border-r bg-green-50">Col 30 - Farmers</th>
-              <th className="px-3 py-2 text-right border-r bg-green-50">Col 31 - Qty (Qtl)</th>
-              <th className="px-3 py-2 text-right border-r bg-gray-200">Col 32 - Cost (Auto)</th>
-              <th className="px-3 py-2 text-right border-r bg-gray-200">Col 33 - Received (Auto)</th>
-              <th className="px-3 py-2 text-right border-r bg-green-50">Col 34 - Released</th>
-              <th className="px-3 py-2 text-right border-r bg-gray-200">Col 35 - Bal Farmers (Auto)</th>
-              <th className="px-3 py-2 text-right border-r bg-gray-200">Col 36 - Bal HOD (Auto)</th>
-              <th className="px-3 py-2 text-left">Col 37 - Remarks</th>
+              <th className="px-3 py-2 text-left border-r">District</th>
+              <th className="px-3 py-2 text-right border-r bg-green-50">PACS Count</th>
+              <th className="px-3 py-2 text-left border-r bg-green-50">PACS Name</th>
+              <th className="px-3 py-2 text-right border-r bg-green-50">Farmers</th>
+              <th className="px-3 py-2 text-right border-r bg-green-50">Qty (Qtl)</th>
+              <th className="px-3 py-2 text-right border-r bg-gray-200">Cost (Auto)</th>
+              <th className="px-3 py-2 text-right border-r bg-gray-200">Received (Auto)</th>
+              <th className="px-3 py-2 text-right border-r bg-green-50">Released</th>
+              <th className="px-3 py-2 text-right border-r bg-gray-200">Bal Farmers (Auto)</th>
+              <th className="px-3 py-2 text-right border-r bg-gray-200">Bal HOD (Auto)</th>
+              <th className="px-3 py-2 text-left">Remarks</th>
             </tr>
           </thead>
           <tbody>

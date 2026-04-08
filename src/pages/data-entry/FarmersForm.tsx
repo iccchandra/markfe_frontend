@@ -1,5 +1,5 @@
 // ============================================
-// pages/data-entry/FarmersForm.tsx — District Farmers Sheet Cols 27-37
+// pages/data-entry/FarmersForm.tsx — District Farmers Data
 // DM fills farmer procurement & payment data
 // ============================================
 import React, { useState, useEffect, useMemo } from 'react';
@@ -209,7 +209,7 @@ export const FarmersForm: React.FC = () => {
           District Farmers Data
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Farmers Sheet Columns 27-37 | Procurement & Payment Tracking
+          Procurement & Payment Tracking
           {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
         </p>
       </div>
@@ -279,10 +279,10 @@ export const FarmersForm: React.FC = () => {
           {/* Form */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Col 27: District (display only) */}
+              {/* District (display only) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="text-green-500 text-xs mr-1">Col 27</span>
+                  
                   Maize Procurement District
                 </label>
                 <input
@@ -293,10 +293,10 @@ export const FarmersForm: React.FC = () => {
                 />
               </div>
 
-              {/* Col 28: PACS Count */}
+              {/* PACS Count */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="text-green-500 text-xs mr-1">Col 28</span>
+                  
                   No. of PACS/DCMS/FPO
                 </label>
                 <input
@@ -309,10 +309,10 @@ export const FarmersForm: React.FC = () => {
                 />
               </div>
 
-              {/* Col 29: PACS Entity */}
+              {/* PACS Entity */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="text-green-500 text-xs mr-1">Col 29</span>
+                  
                   Name of PACS/DCMS/FPO
                 </label>
                 <select
@@ -330,10 +330,10 @@ export const FarmersForm: React.FC = () => {
                 </select>
               </div>
 
-              {/* Col 30: Farmers Count */}
+              {/* Farmers Count */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="text-green-500 text-xs mr-1">Col 30</span>
+                  
                   Total Farmers Benefited
                 </label>
                 <input
@@ -346,10 +346,10 @@ export const FarmersForm: React.FC = () => {
                 />
               </div>
 
-              {/* Col 31: Qty Procured */}
+              {/* Qty Procured */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="text-green-500 text-xs mr-1">Col 31</span>
+                  
                   Total Qty Procured (Qtls)
                 </label>
                 <input
@@ -363,10 +363,10 @@ export const FarmersForm: React.FC = () => {
                 />
               </div>
 
-              {/* Col 34: Payment Released */}
+              {/* Payment Released */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="text-green-500 text-xs mr-1">Col 34</span>
+                  
                   Payment Released to Farmers (Rs.)
                 </label>
                 <input
@@ -380,10 +380,10 @@ export const FarmersForm: React.FC = () => {
                 />
               </div>
 
-              {/* Col 37: Remarks */}
+              {/* Remarks */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <span className="text-green-500 text-xs mr-1">Col 37</span>
+                  
                   Remarks
                 </label>
                 <textarea
@@ -402,39 +402,27 @@ export const FarmersForm: React.FC = () => {
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Auto-Calculated Fields</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
-                  <p className="text-xs text-gray-500">
-                    <span className="text-gray-400 text-xs">Col 32</span>
-                  </p>
                   <p className="text-xs text-gray-500">Cost of Procured Qty</p>
                   <p className="text-base font-bold text-gray-800">Rs. {formatIndianCurrency(costOfProcuredQty)}</p>
                   <p className="text-[10px] text-gray-400">Qty x Rs.{mspRate}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">
-                    <span className="text-gray-400 text-xs">Col 33</span>
-                  </p>
                   <p className="text-xs text-gray-500">Amt Received from HO</p>
                   <p className="text-base font-bold text-blue-600">Rs. {formatIndianCurrency(amountReceivedFromHO)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">
-                    <span className="text-gray-400 text-xs">Col 35</span>
-                  </p>
                   <p className="text-xs text-gray-500">Balance to Farmers</p>
                   <p className={`text-base font-bold ${balanceToRelease < 0 ? 'text-red-600' : 'text-orange-600'}`}>
                     Rs. {formatIndianCurrency(balanceToRelease)}
                   </p>
-                  <p className="text-[10px] text-gray-400">Col33 - Col34</p>
+                  <p className="text-[10px] text-gray-400">Received - Released</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">
-                    <span className="text-gray-400 text-xs">Col 36</span>
-                  </p>
                   <p className="text-xs text-gray-500">Balance from HOD</p>
                   <p className={`text-base font-bold ${balanceDueFromHOD < 0 ? 'text-green-600' : 'text-red-600'}`}>
                     Rs. {formatIndianCurrency(balanceDueFromHOD)}
                   </p>
-                  <p className="text-[10px] text-gray-400">Col32 - Col33</p>
+                  <p className="text-[10px] text-gray-400">Cost - Received</p>
                 </div>
               </div>
             </div>

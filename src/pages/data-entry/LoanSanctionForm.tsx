@@ -1,5 +1,5 @@
 // ============================================
-// pages/data-entry/LoanSanctionForm.tsx — MD Sheet Cols 1-8
+// pages/data-entry/LoanSanctionForm.tsx — Loan Sanction Form
 // AO_CAO & SUPER_ADMIN can edit
 // ============================================
 import React, { useState, useEffect } from 'react';
@@ -219,7 +219,7 @@ export const LoanSanctionForm: React.FC = () => {
             Loan Sanction
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            MD Sheet Columns 1-8 | GO & Bank Details
+            GO & Bank Details
             {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
           </p>
         </div>
@@ -272,10 +272,10 @@ export const LoanSanctionForm: React.FC = () => {
       {/* Form Card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Col 1: GO Reference */}
+          {/* GO Reference */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 1</span>
+              
               Total Loan Approved as per GO No.
             </label>
             <input
@@ -288,10 +288,10 @@ export const LoanSanctionForm: React.FC = () => {
             />
           </div>
 
-          {/* Col 2: Bank Name (from API) */}
+          {/* Bank Name (from API) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 2</span>
+              
               Loan Sanctioned By (Bank)
             </label>
             <select
@@ -310,10 +310,10 @@ export const LoanSanctionForm: React.FC = () => {
             </select>
           </div>
 
-          {/* Col 3: Account No */}
+          {/* Account No */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 3</span>
+              
               Bank Account No.
             </label>
             <input
@@ -326,10 +326,10 @@ export const LoanSanctionForm: React.FC = () => {
             />
           </div>
 
-          {/* Col 4: Sanction Date */}
+          {/* Sanction Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 4</span>
+              
               Date of Sanction of Loan
             </label>
             <input
@@ -342,10 +342,10 @@ export const LoanSanctionForm: React.FC = () => {
             />
           </div>
 
-          {/* Col 5: Total Sanctioned */}
+          {/* Total Sanctioned */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 5</span>
+              
               Total Amount Sanctioned (in Crores)
             </label>
             <input
@@ -359,10 +359,10 @@ export const LoanSanctionForm: React.FC = () => {
             />
           </div>
 
-          {/* Col 6: Total Drawn */}
+          {/* Total Drawn */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 6</span>
+              
               Total Loan Amount Drawn by HOD (in Crores)
             </label>
             <input
@@ -380,10 +380,10 @@ export const LoanSanctionForm: React.FC = () => {
             )}
           </div>
 
-          {/* Col 7: Transfer Bank Name (from API) */}
+          {/* Transfer Bank Name (from API) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 7</span>
+              
               Amount Transferred to (Bank Name)
             </label>
             <select
@@ -402,10 +402,10 @@ export const LoanSanctionForm: React.FC = () => {
             </select>
           </div>
 
-          {/* Col 8: Kotak Account No */}
+          {/* Kotak Account No */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <span className="text-blue-500 text-xs mr-1">Col 8</span>
+              
               Received Kotak Bank Account No.
             </label>
             <input

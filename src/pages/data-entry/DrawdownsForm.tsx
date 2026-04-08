@@ -1,5 +1,5 @@
 // ============================================
-// pages/data-entry/DrawdownsForm.tsx — MD Sheet Cols 9-13
+// pages/data-entry/DrawdownsForm.tsx — District Transfers
 // Per-district drawdown rows (AO_CAO fills)
 // ============================================
 import React, { useState, useEffect } from 'react';
@@ -264,7 +264,7 @@ export const DrawdownsForm: React.FC = () => {
             District Transfers (Drawdowns)
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            MD Sheet Columns 9-13 | Per-district fund transfers
+            Per-district fund transfers
             {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
           </p>
         </div>
@@ -310,19 +310,19 @@ export const DrawdownsForm: React.FC = () => {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                <span className="text-blue-500 text-xs mr-1">Col 11</span>District
+                District
               </th>
               <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                <span className="text-blue-500 text-xs mr-1">Col 9</span>Amount Withdrawn (Cr)
+                Amount Withdrawn (Cr)
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                <span className="text-blue-500 text-xs mr-1">Col 10</span>Withdrawn Date
+                Withdrawn Date
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                <span className="text-blue-500 text-xs mr-1">Col 12</span>Transfer Date
+                Transfer Date
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                <span className="text-blue-500 text-xs mr-1">Col 13</span>UTR No.
+                UTR No.
               </th>
               <th className="px-4 py-3 text-center font-semibold text-gray-600">Status</th>
               {(canEdit || canApprove) && <th className="px-4 py-3 text-center font-semibold text-gray-600 w-36">Actions</th>}

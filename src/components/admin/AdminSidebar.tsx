@@ -59,10 +59,10 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       path: '/data-entry',
       roles: [UserRole.SUPER_ADMIN, UserRole.AO_CAO, UserRole.DM],
       submenu: [
-        { id: 'loan-sanction', label: 'Loan Sanction (1-8)', path: '/data-entry/loan', roles: [UserRole.SUPER_ADMIN, UserRole.AO_CAO] },
-        { id: 'drawdowns', label: 'District Transfers (9-13)', path: '/data-entry/drawdowns', roles: [UserRole.SUPER_ADMIN, UserRole.AO_CAO] },
-        { id: 'utilization', label: 'Utilization (14-26)', path: '/data-entry/utilization', roles: [UserRole.SUPER_ADMIN, UserRole.DM] },
-        { id: 'farmers', label: 'Farmers Data (27-37)', path: '/data-entry/farmers', roles: [UserRole.SUPER_ADMIN, UserRole.DM] },
+        { id: 'loan-sanction', label: 'Loan Sanction', path: '/data-entry/loan', roles: [UserRole.SUPER_ADMIN, UserRole.AO_CAO] },
+        { id: 'drawdowns', label: 'District Transfers', path: '/data-entry/drawdowns', roles: [UserRole.SUPER_ADMIN, UserRole.AO_CAO] },
+        { id: 'utilization', label: 'Utilization', path: '/data-entry/utilization', roles: [UserRole.SUPER_ADMIN, UserRole.DM] },
+        { id: 'farmers', label: 'Farmers Data', path: '/data-entry/farmers', roles: [UserRole.SUPER_ADMIN, UserRole.DM] },
       ],
     },
     // ─── Reports ────────────────────────────────
