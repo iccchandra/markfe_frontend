@@ -1,34 +1,49 @@
 // ============================================
 // pages/reports/FarmersSheetView.tsx — District Farmers Sheet (Read-Only)
-// Consolidated farmers view — aggregates multiple records per district
+// Per-PACS entity rows, grouped by district with sub-totals
 // ============================================
 import React, { useState, useEffect, useMemo } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { farmersAPI, drawdownsAPI, seasonsAPI, districtsAPI, exportAPI } from '../../api/services';
 import type { DistrictFarmers, Season, District, DistrictDrawdown } from '../../types/markfed';
-import { UserRole, calcCostOfProcuredQty, formatAmount, num, flattenDistrict, flattenPacs } from '../../types/markfed';
+import { UserRole, calcCostOfProcuredQty, formatAmount, num, flattenDistrict, flattenPacs, flattenPacsType } from '../../types/markfed';
 
-interface FarmersRow {
+interface PacsRow {
+  id: number;
   district_id: number;
   district_name: string;
-  pacs_count: number; // now derived from record_count
-  pacs_names: string; // comma-joined entity names
+  pacs_name: string;
+  pacs_type: string;
   farmers_count: number;
   quantity_procured_qtl: number;
-  cost_of_procured_qty_rs: number; // auto
-  amount_received_from_ho: number; // auto
-  payment_released_to_farmers_rs: number;
-  balance_to_farmers: number; // auto
-  balance_from_hod: number; // auto
-  record_count: number;
+  cost_rs: number;
+  received_rs: number;
+  released_rs: number;
+  balance_farmers_rs: number;
+  balance_hod_rs: number;
   remarks: string;
+}
+
+interface DistrictGroup {
+  district_id: number;
+  district_name: string;
+  rows: PacsRow[];
+  subtotal: {
+    farmers_count: number;
+    quantity_procured_qtl: number;
+    cost_rs: number;
+    received_rs: number;
+    released_rs: number;
+    balance_farmers_rs: number;
+    balance_hod_rs: number;
+  };
 }
 
 export const FarmersSheetView: React.FC = () => {
   const { user } = useAuth();
   const [season, setSeason] = useState<Season | null>(null);
-  const [rows, setRows] = useState<FarmersRow[]>([]);
+  const [groups, setGroups] = useState<DistrictGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +53,7 @@ export const FarmersSheetView: React.FC = () => {
         const [seasonRes, distRes] = await Promise.all([seasonsAPI.active(), districtsAPI.list()]);
         const activeSeason = seasonRes.data;
         setSeason(activeSeason);
+        const mspRate = num(activeSeason.msp_rate);
 
         const districtMap = new Map<number, string>();
         distRes.data.forEach((d: District) => districtMap.set(d.id, d.name));
@@ -52,109 +68,83 @@ export const FarmersSheetView: React.FC = () => {
         const ddRaw = ddRes.status === 'fulfilled' ? ddRes.value.data : [];
         const drawdowns: DistrictDrawdown[] = Array.isArray(ddRaw) ? ddRaw : (ddRaw as any)?.data || [];
 
-        // Sum drawdowns by district
         const drawdownByDistrict = new Map<number, number>();
         drawdowns.forEach((dd: any) => {
           drawdownByDistrict.set(dd.district_id, (drawdownByDistrict.get(dd.district_id) || 0) + num(dd.amount_withdrawn_rs));
         });
 
-        // Aggregate multiple farmer records per district
-        const districtAgg = new Map<number, {
-          district_name: string;
-          pacs_names: string[];
-          farmers_count: number;
-          quantity_procured_qtl: number;
-          payment_released_to_farmers_rs: number;
-          record_count: number;
-          remarks: string[];
-        }>();
+        // Build per-PACS rows grouped by district
+        const districtGroupMap = new Map<number, DistrictGroup>();
 
         farmers.forEach((f: any) => {
           const did = f.district_id;
-          const existing = districtAgg.get(did);
           const dName = flattenDistrict(f) || districtMap.get(did) || `District ${did}`;
-          const pacsName = flattenPacs(f);
+          const qty = num(f.quantity_procured_qtl);
+          const cost = calcCostOfProcuredQty(qty, mspRate);
+          const received = drawdownByDistrict.get(did) || 0;
+          const released = num(f.payment_released_to_farmers_rs);
 
-          if (existing) {
-            existing.farmers_count += num(f.farmers_count);
-            existing.quantity_procured_qtl += num(f.quantity_procured_qtl);
-            existing.payment_released_to_farmers_rs += num(f.payment_released_to_farmers_rs);
-            existing.record_count += 1;
-            if (pacsName) existing.pacs_names.push(pacsName);
-            if (f.remarks) existing.remarks.push(f.remarks);
-          } else {
-            districtAgg.set(did, {
+          const row: PacsRow = {
+            id: f.id,
+            district_id: did,
+            district_name: dName,
+            pacs_name: flattenPacs(f) || '-',
+            pacs_type: flattenPacsType(f) || '-',
+            farmers_count: num(f.farmers_count),
+            quantity_procured_qtl: qty,
+            cost_rs: cost,
+            received_rs: received,
+            released_rs: released,
+            balance_farmers_rs: received - released,
+            balance_hod_rs: cost - received,
+            remarks: f.remarks || '',
+          };
+
+          if (!districtGroupMap.has(did)) {
+            districtGroupMap.set(did, {
+              district_id: did,
               district_name: dName,
-              pacs_names: pacsName ? [pacsName] : [],
-              farmers_count: num(f.farmers_count),
-              quantity_procured_qtl: num(f.quantity_procured_qtl),
-              payment_released_to_farmers_rs: num(f.payment_released_to_farmers_rs),
-              record_count: 1,
-              remarks: f.remarks ? [f.remarks] : [],
+              rows: [],
+              subtotal: { farmers_count: 0, quantity_procured_qtl: 0, cost_rs: 0, received_rs: 0, released_rs: 0, balance_farmers_rs: 0, balance_hod_rs: 0 },
             });
           }
+          const group = districtGroupMap.get(did)!;
+          group.rows.push(row);
+          group.subtotal.farmers_count += row.farmers_count;
+          group.subtotal.quantity_procured_qtl += row.quantity_procured_qtl;
+          group.subtotal.cost_rs += row.cost_rs;
+          group.subtotal.released_rs += row.released_rs;
+          group.subtotal.balance_farmers_rs += row.balance_farmers_rs;
+          group.subtotal.balance_hod_rs += row.balance_hod_rs;
+          // received is same for all rows in a district (total drawdowns)
+          group.subtotal.received_rs = received;
         });
 
-        const farmersRows: FarmersRow[] = [];
-        districtAgg.forEach((agg, districtId) => {
-          const qty = agg.quantity_procured_qtl;
-          const cost = calcCostOfProcuredQty(qty, num(activeSeason.msp_rate));
-          const received = drawdownByDistrict.get(districtId) || 0;
-          const released = agg.payment_released_to_farmers_rs;
-
-          farmersRows.push({
-            district_id: districtId,
-            district_name: agg.district_name,
-            pacs_count: agg.record_count,
-            pacs_names: agg.pacs_names.join(', '),
-            farmers_count: agg.farmers_count,
-            quantity_procured_qtl: qty,
-            cost_of_procured_qty_rs: cost,
-            amount_received_from_ho: received,
-            payment_released_to_farmers_rs: released,
-            balance_to_farmers: received - released,
-            balance_from_hod: cost - received,
-            record_count: agg.record_count,
-            remarks: agg.remarks.join('; '),
-          });
-        });
-
-        // Sort by district name
-        farmersRows.sort((a, b) => a.district_name.localeCompare(b.district_name));
+        let groupList = Array.from(districtGroupMap.values()).sort((a, b) => a.district_name.localeCompare(b.district_name));
 
         // DM sees only their district
-        const filtered = user?.role === UserRole.DM && user.district_id
-          ? farmersRows.filter(r => r.district_id === user.district_id)
-          : farmersRows;
-        setRows(filtered);
-      } catch {
-        // error
-      } finally {
-        setLoading(false);
-      }
+        if (user?.role === UserRole.DM && user.district_id) {
+          groupList = groupList.filter(g => g.district_id === user.district_id);
+        }
+        setGroups(groupList);
+      } catch { /* error */ }
+      finally { setLoading(false); }
     };
     load();
   }, []);
 
-  const totals = useMemo(() => {
-    return rows.reduce(
-      (acc, r) => ({
-        pacs_count: acc.pacs_count + r.pacs_count,
-        farmers_count: acc.farmers_count + r.farmers_count,
-        quantity_procured_qtl: acc.quantity_procured_qtl + r.quantity_procured_qtl,
-        cost_of_procured_qty_rs: acc.cost_of_procured_qty_rs + r.cost_of_procured_qty_rs,
-        amount_received_from_ho: acc.amount_received_from_ho + r.amount_received_from_ho,
-        payment_released_to_farmers_rs: acc.payment_released_to_farmers_rs + r.payment_released_to_farmers_rs,
-        balance_to_farmers: acc.balance_to_farmers + r.balance_to_farmers,
-        balance_from_hod: acc.balance_from_hod + r.balance_from_hod,
-      }),
-      {
-        pacs_count: 0, farmers_count: 0, quantity_procured_qtl: 0,
-        cost_of_procured_qty_rs: 0, amount_received_from_ho: 0,
-        payment_released_to_farmers_rs: 0, balance_to_farmers: 0, balance_from_hod: 0,
-      }
-    );
-  }, [rows]);
+  const grandTotal = useMemo(() => {
+    return groups.reduce((acc, g) => ({
+      pacs_count: acc.pacs_count + g.rows.length,
+      farmers_count: acc.farmers_count + g.subtotal.farmers_count,
+      quantity_procured_qtl: acc.quantity_procured_qtl + g.subtotal.quantity_procured_qtl,
+      cost_rs: acc.cost_rs + g.subtotal.cost_rs,
+      received_rs: acc.received_rs + g.subtotal.received_rs,
+      released_rs: acc.released_rs + g.subtotal.released_rs,
+      balance_farmers_rs: acc.balance_farmers_rs + g.subtotal.balance_farmers_rs,
+      balance_hod_rs: acc.balance_hod_rs + g.subtotal.balance_hod_rs,
+    }), { pacs_count: 0, farmers_count: 0, quantity_procured_qtl: 0, cost_rs: 0, received_rs: 0, released_rs: 0, balance_farmers_rs: 0, balance_hod_rs: 0 });
+  }, [groups]);
 
   const handleExportExcel = async () => {
     if (!season) return;
@@ -170,19 +160,15 @@ export const FarmersSheetView: React.FC = () => {
     } catch { alert('Export failed'); }
   };
 
-  const isMyDistrict = (districtId: number) =>
-    user?.role === UserRole.DM && user.district_id === districtId;
-
-  const numCell = (val: number) => (
-    <span className="font-mono text-xs">{formatAmount(val)}</span>
+  const numCell = (val: number) => <span className="font-mono text-xs">{formatAmount(val)}</span>;
+  const balHod = (val: number) => (
+    <span className={val > 0 ? 'text-red-600' : 'text-green-600'}>
+      {numCell(Math.abs(val))} {val > 0 ? '(Due)' : val < 0 ? '(Surplus)' : ''}
+    </span>
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
   return (
@@ -194,16 +180,13 @@ export const FarmersSheetView: React.FC = () => {
             District Farmers Sheet Report
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Farmer procurement & payment tracking (aggregated per district)
+            Per PACS/DCMS/FPO entity — grouped by district
             {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
           </p>
         </div>
-        <button
-          onClick={handleExportExcel}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg"
-        >
-          <Download className="w-4 h-4" />
-          Export Excel
+        <button onClick={handleExportExcel}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg">
+          <Download className="w-4 h-4" /> Export Excel
         </button>
       </div>
 
@@ -212,65 +195,75 @@ export const FarmersSheetView: React.FC = () => {
           <thead>
             <tr className="bg-gray-100 border-b">
               <th className="px-3 py-2 text-left border-r">District</th>
-              <th className="px-3 py-2 text-right border-r bg-green-50">PACS Count</th>
-              <th className="px-3 py-2 text-left border-r bg-green-50">PACS/DCMS/FPO Names</th>
+              <th className="px-3 py-2 text-left border-r bg-green-50">PACS/DCMS/FPO</th>
+              <th className="px-3 py-2 text-center border-r bg-green-50">Type</th>
               <th className="px-3 py-2 text-right border-r bg-green-50">Farmers</th>
               <th className="px-3 py-2 text-right border-r bg-green-50">Qty (Qtl)</th>
               <th className="px-3 py-2 text-right border-r bg-gray-200">Cost (Auto)</th>
               <th className="px-3 py-2 text-right border-r bg-gray-200">Received (Auto)</th>
               <th className="px-3 py-2 text-right border-r bg-green-50">Released</th>
-              <th className="px-3 py-2 text-right border-r bg-gray-200">Bal Farmers (Auto)</th>
-              <th className="px-3 py-2 text-right border-r bg-gray-200" title="Positive = Due from HOD, Negative = Surplus with District">Bal HOD (Auto)</th>
-              <th className="px-3 py-2 text-right border-r">Records</th>
+              <th className="px-3 py-2 text-right border-r bg-gray-200">Bal Farmers</th>
+              <th className="px-3 py-2 text-right border-r bg-gray-200">Bal HOD</th>
               <th className="px-3 py-2 text-left">Remarks</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
-              <tr
-                key={i}
-                className={`border-b hover:bg-gray-50 ${isMyDistrict(row.district_id) ? 'bg-yellow-50' : ''}`}
-              >
-                <td className="px-3 py-2 font-semibold border-r">{row.district_name}</td>
-                <td className="px-3 py-2 text-right border-r">{row.pacs_count}</td>
-                <td className="px-3 py-2 border-r max-w-[200px] truncate" title={row.pacs_names}>{row.pacs_names || '-'}</td>
-                <td className="px-3 py-2 text-right border-r">{row.farmers_count.toLocaleString('en-IN')}</td>
-                <td className="px-3 py-2 text-right border-r">{row.quantity_procured_qtl.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
-                <td className="px-3 py-2 text-right border-r bg-gray-50">{numCell(row.cost_of_procured_qty_rs)}</td>
-                <td className="px-3 py-2 text-right border-r bg-gray-50">{numCell(row.amount_received_from_ho)}</td>
-                <td className="px-3 py-2 text-right border-r">{numCell(row.payment_released_to_farmers_rs)}</td>
-                <td className={`px-3 py-2 text-right border-r bg-gray-50 ${row.balance_to_farmers < 0 ? 'text-red-600' : ''}`}>
-                  {numCell(row.balance_to_farmers)}
-                </td>
-                <td className={`px-3 py-2 text-right border-r bg-gray-50 ${row.balance_from_hod > 0 ? 'text-red-600' : 'text-green-600'}`} title={row.balance_from_hod > 0 ? 'Due from HOD' : 'Surplus with District'}>
-                  {numCell(Math.abs(row.balance_from_hod))} {row.balance_from_hod > 0 ? '(Due)' : row.balance_from_hod < 0 ? '(Surplus)' : ''}
-                </td>
-                <td className="px-3 py-2 text-right border-r text-gray-500">{row.record_count}</td>
-                <td className="px-3 py-2 max-w-[120px] truncate">{row.remarks}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-gray-400">
-                  No farmers data available.
-                </td>
-              </tr>
+            {groups.length === 0 && (
+              <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400">No farmers data available.</td></tr>
             )}
-            {rows.length > 0 && (
-              <tr className="bg-green-50 font-bold border-t-2 border-green-300">
-                <td className="px-3 py-2 border-r">TOTAL</td>
-                <td className="px-3 py-2 text-right border-r">{totals.pacs_count}</td>
-                <td className="px-3 py-2 border-r"></td>
-                <td className="px-3 py-2 text-right border-r">{totals.farmers_count.toLocaleString('en-IN')}</td>
-                <td className="px-3 py-2 text-right border-r">{totals.quantity_procured_qtl.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
-                <td className="px-3 py-2 text-right border-r">{numCell(totals.cost_of_procured_qty_rs)}</td>
-                <td className="px-3 py-2 text-right border-r">{numCell(totals.amount_received_from_ho)}</td>
-                <td className="px-3 py-2 text-right border-r">{numCell(totals.payment_released_to_farmers_rs)}</td>
-                <td className="px-3 py-2 text-right border-r">{numCell(totals.balance_to_farmers)}</td>
-                <td className={`px-3 py-2 text-right border-r ${totals.balance_from_hod > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {numCell(Math.abs(totals.balance_from_hod))} {totals.balance_from_hod > 0 ? '(Due)' : totals.balance_from_hod < 0 ? '(Surplus)' : ''}
-                </td>
-                <td className="px-3 py-2 border-r"></td>
+            {groups.map((group) => (
+              <React.Fragment key={group.district_id}>
+                {/* Per-PACS rows */}
+                {group.rows.map((row, i) => (
+                  <tr key={row.id} className="border-b hover:bg-gray-50">
+                    <td className="px-3 py-2 font-semibold border-r">
+                      {i === 0 ? row.district_name : ''}
+                    </td>
+                    <td className="px-3 py-2 border-r">{row.pacs_name}</td>
+                    <td className="px-3 py-2 text-center border-r">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        {row.pacs_type}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right border-r">{row.farmers_count.toLocaleString('en-IN')}</td>
+                    <td className="px-3 py-2 text-right border-r">{row.quantity_procured_qtl.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
+                    <td className="px-3 py-2 text-right border-r bg-gray-50">{numCell(row.cost_rs)}</td>
+                    <td className="px-3 py-2 text-right border-r bg-gray-50">{i === 0 ? numCell(row.received_rs) : ''}</td>
+                    <td className="px-3 py-2 text-right border-r">{numCell(row.released_rs)}</td>
+                    <td className="px-3 py-2 text-right border-r bg-gray-50">{i === 0 ? numCell(row.balance_farmers_rs) : ''}</td>
+                    <td className="px-3 py-2 text-right border-r bg-gray-50">{i === 0 ? balHod(row.balance_hod_rs) : ''}</td>
+                    <td className="px-3 py-2 max-w-[120px] truncate">{row.remarks}</td>
+                  </tr>
+                ))}
+                {/* District sub-total (only if more than 1 entity) */}
+                {group.rows.length > 1 && (
+                  <tr className="bg-green-50/50 font-semibold border-b">
+                    <td className="px-3 py-1.5 border-r text-right text-[10px] text-gray-500" colSpan={3}>
+                      Sub Total — {group.district_name} ({group.rows.length} entities)
+                    </td>
+                    <td className="px-3 py-1.5 text-right border-r">{group.subtotal.farmers_count.toLocaleString('en-IN')}</td>
+                    <td className="px-3 py-1.5 text-right border-r">{group.subtotal.quantity_procured_qtl.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
+                    <td className="px-3 py-1.5 text-right border-r">{numCell(group.subtotal.cost_rs)}</td>
+                    <td className="px-3 py-1.5 text-right border-r">{numCell(group.subtotal.received_rs)}</td>
+                    <td className="px-3 py-1.5 text-right border-r">{numCell(group.subtotal.released_rs)}</td>
+                    <td className="px-3 py-1.5 text-right border-r">{numCell(group.subtotal.balance_farmers_rs)}</td>
+                    <td className="px-3 py-1.5 text-right border-r">{balHod(group.subtotal.balance_hod_rs)}</td>
+                    <td className="px-3 py-1.5"></td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+            {/* Grand Total */}
+            {groups.length > 0 && (
+              <tr className="bg-green-100 font-bold border-t-2 border-green-400">
+                <td className="px-3 py-2 border-r" colSpan={3}>GRAND TOTAL ({grandTotal.pacs_count} entities)</td>
+                <td className="px-3 py-2 text-right border-r">{grandTotal.farmers_count.toLocaleString('en-IN')}</td>
+                <td className="px-3 py-2 text-right border-r">{grandTotal.quantity_procured_qtl.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
+                <td className="px-3 py-2 text-right border-r">{numCell(grandTotal.cost_rs)}</td>
+                <td className="px-3 py-2 text-right border-r">{numCell(grandTotal.received_rs)}</td>
+                <td className="px-3 py-2 text-right border-r">{numCell(grandTotal.released_rs)}</td>
+                <td className="px-3 py-2 text-right border-r">{numCell(grandTotal.balance_farmers_rs)}</td>
+                <td className="px-3 py-2 text-right border-r">{balHod(grandTotal.balance_hod_rs)}</td>
                 <td className="px-3 py-2"></td>
               </tr>
             )}
