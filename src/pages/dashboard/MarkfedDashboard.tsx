@@ -98,25 +98,12 @@ export const MarkfedDashboard: React.FC = () => {
     } catch { alert('Export failed'); }
   };
 
-  // Filter district rows — DM sees own district, all roles see only approved utilization data
+  // Filter district rows — only approved utilization shown on dashboard
   const allRows: DistrictSummaryRow[] = summary?.district_wise_summary || [];
   const districtRows: DistrictSummaryRow[] = (user?.role === UserRole.DM && user.district_id
-    ? allRows.filter((d) => d.district_id === user.district_id)
-    : allRows
-  ).map(d => {
-    // Only show utilization amounts for approved districts
-    const isApproved = (d as any).status === 'approved';
-    return isApproved ? d : {
-      ...d,
-      farmers_paid_rs: 0,
-      gunnies_rs: 0,
-      transportation_rs: 0,
-      unloading_rs: 0,
-      storage_rs: 0,
-      total_utilised_rs: 0,
-      balance_rs: d.amount_received_rs,
-    };
-  });
+    ? allRows.filter((d) => d.district_id === user.district_id && (d as any).status === 'approved')
+    : allRows.filter((d) => (d as any).status === 'approved')
+  );
 
   // Totals
   const districtTotals = districtRows.reduce(
