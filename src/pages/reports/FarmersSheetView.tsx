@@ -159,7 +159,8 @@ export const FarmersSheetView: React.FC = () => {
   const handleExportExcel = async () => {
     if (!season) return;
     try {
-      const res = await exportAPI.excel(season.id);
+      const dmDistrictId = user?.role === UserRole.DM ? user.district_id : undefined;
+      const res = await exportAPI.excel(season.id, dmDistrictId || undefined);
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
