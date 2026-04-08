@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { loanSanctionAPI, seasonsAPI, banksAPI } from '../../api/services';
 import type { LoanSanction, Season, Bank, ApprovalStatus } from '../../types/markfed';
-import { UserRole, formatCrores, num } from '../../types/markfed';
+import { UserRole, formatAmount, num } from '../../types/markfed';
 
 // ─── Status badge config ─────────────────────────
 const STATUS_BADGE: Record<ApprovalStatus, { label: string; cls: string }> = {
@@ -306,16 +306,16 @@ export const LoanSanctionForm: React.FC = () => {
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-xs text-gray-500">Total Sanctioned</p>
-            <p className="text-lg font-bold text-blue-600">{formatCrores(totalSanctioned)}</p>
+            <p className="text-lg font-bold text-blue-600">{formatAmount((totalSanctioned) * 10000000)}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Total Drawn</p>
-            <p className="text-lg font-bold text-green-600">{formatCrores(totalDrawn)}</p>
+            <p className="text-lg font-bold text-green-600">{formatAmount((totalDrawn) * 10000000)}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Balance Available</p>
             <p className={`text-lg font-bold ${balanceAvailable < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-              {formatCrores(balanceAvailable)}
+              {formatAmount((balanceAvailable) * 10000000)}
             </p>
           </div>
         </div>
@@ -439,7 +439,7 @@ export const LoanSanctionForm: React.FC = () => {
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
-                      <span className="font-mono">{formatCrores(row.total_sanctioned_cr)}</span>
+                      <span className="font-mono">{formatAmount((row.total_sanctioned_cr) * 10000000)}</span>
                     )}
                   </td>
 
@@ -461,7 +461,7 @@ export const LoanSanctionForm: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <span className="font-mono">{formatCrores(row.total_drawn_cr)}</span>
+                      <span className="font-mono">{formatAmount((row.total_drawn_cr) * 10000000)}</span>
                     )}
                   </td>
 
@@ -597,8 +597,8 @@ export const LoanSanctionForm: React.FC = () => {
             {rows.length > 0 && (
               <tr className="bg-blue-50 font-semibold">
                 <td className="px-3 py-3 text-right" colSpan={4}>TOTAL</td>
-                <td className="px-3 py-3 text-right font-mono">{formatCrores(totalSanctioned)}</td>
-                <td className="px-3 py-3 text-right font-mono">{formatCrores(totalDrawn)}</td>
+                <td className="px-3 py-3 text-right font-mono">{formatAmount((totalSanctioned) * 10000000)}</td>
+                <td className="px-3 py-3 text-right font-mono">{formatAmount((totalDrawn) * 10000000)}</td>
                 <td colSpan={(canEdit || canApprove) ? 4 : 3}></td>
               </tr>
             )}

@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { drawdownsAPI, districtsAPI, seasonsAPI, loanSanctionAPI } from '../../api/services';
 import type { DistrictDrawdown, District, Season, LoanSanction, ApprovalStatus } from '../../types/markfed';
-import { UserRole, formatIndianCurrency, formatCrores, num, flattenDistrict } from '../../types/markfed';
+import { UserRole, formatAmount, num, flattenDistrict } from '../../types/markfed';
 
 const STATUS_BADGE: Record<ApprovalStatus, { label: string; cls: string }> = {
   draft: { label: 'Draft', cls: 'bg-gray-100 text-gray-600' },
@@ -145,7 +145,7 @@ export const DrawdownsForm: React.FC = () => {
         .filter((_, i) => i !== index)
         .reduce((sum, r) => sum + (r.amount_withdrawn_rs || 0), 0);
       if (otherRowsTotal + row.amount_withdrawn_rs > loanDrawnRs) {
-        setMessage({ type: 'error', text: `Total drawdowns (Rs. ${formatIndianCurrency(otherRowsTotal + row.amount_withdrawn_rs)}) exceed loan drawn by HOD (Rs. ${formatIndianCurrency(loanDrawnRs)})` });
+        setMessage({ type: 'error', text: `Total drawdowns (${formatAmount(otherRowsTotal + row.amount_withdrawn_rs)}) exceed loan drawn by HOD (${formatAmount(loanDrawnRs)})` });
         return;
       }
     }
@@ -280,16 +280,16 @@ export const DrawdownsForm: React.FC = () => {
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-xs text-gray-500">Loan Drawn by HOD</p>
-            <p className="text-lg font-bold text-blue-600">{loan ? formatCrores(loan.total_drawn_cr) : '--'}</p>
+            <p className="text-lg font-bold text-blue-600">{loan ? formatAmount((loan.total_drawn_cr || 0) * 10000000) : '--'}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Total Transferred to Districts</p>
-            <p className="text-lg font-bold text-green-600">{formatCrores(totalWithdrawn / 10000000)}</p>
+            <p className="text-lg font-bold text-green-600">{formatAmount(totalWithdrawn)}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Balance with HOD</p>
             <p className={`text-lg font-bold ${loanDrawnRs - totalWithdrawn < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-              {formatCrores((loanDrawnRs - totalWithdrawn) / 10000000)}
+              {formatAmount(loanDrawnRs - totalWithdrawn)}
             </p>
           </div>
         </div>
@@ -362,7 +362,7 @@ export const DrawdownsForm: React.FC = () => {
                       className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:ring-2 focus:ring-blue-500"
                     />
                   ) : (
-                    <span className="font-mono">{formatCrores(row.amount_withdrawn_rs / 10000000)}</span>
+                    <span className="font-mono">{formatAmount(row.amount_withdrawn_rs)}</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -470,7 +470,7 @@ export const DrawdownsForm: React.FC = () => {
             {rows.length > 0 && (
               <tr className="bg-blue-50 font-semibold">
                 <td className="px-4 py-3 text-right">TOTAL</td>
-                <td className="px-4 py-3 text-right font-mono">{formatCrores(totalWithdrawn / 10000000)}</td>
+                <td className="px-4 py-3 text-right font-mono">{formatAmount(totalWithdrawn)}</td>
                 <td colSpan={(canEdit || canApprove) ? 6 : 4}></td>
               </tr>
             )}

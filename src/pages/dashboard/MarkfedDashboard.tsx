@@ -10,7 +10,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardAPI, seasonsAPI, exportAPI } from '../../api/services';
-import { UserRole, formatIndianCurrency, formatCrores, num } from '../../types/markfed';
+import { UserRole, formatAmount, num } from '../../types/markfed';
 import type { Season, DashboardSummary, DistrictSummaryRow } from '../../types/markfed';
 
 export const MarkfedDashboard: React.FC = () => {
@@ -173,7 +173,7 @@ export const MarkfedDashboard: React.FC = () => {
             </div>
           </div>
           <p className="text-xs text-gray-500 uppercase tracking-wider">Total Sanctioned</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatCrores(summary?.total_sanctioned_cr || 0)}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{formatAmount((summary?.total_sanctioned_cr || 0) * 10000000)}</p>
           <p className="text-xs text-gray-400 mt-1">As per G.O No. {season?.go_number}</p>
         </div>
 
@@ -184,7 +184,7 @@ export const MarkfedDashboard: React.FC = () => {
             </div>
           </div>
           <p className="text-xs text-gray-500 uppercase tracking-wider">Total Drawn by HOD</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{formatCrores(summary?.total_drawn_cr || 0)}</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{formatAmount((summary?.total_drawn_cr || 0) * 10000000)}</p>
           <p className="text-xs text-gray-400 mt-1">
             {summary ? `${((summary.total_drawn_cr / summary.total_sanctioned_cr) * 100).toFixed(1)}% of sanctioned` : ''}
           </p>
@@ -197,7 +197,7 @@ export const MarkfedDashboard: React.FC = () => {
             </div>
           </div>
           <p className="text-xs text-gray-500 uppercase tracking-wider">Total Utilised</p>
-          <p className="text-2xl font-bold text-purple-600 mt-1">Rs. {formatIndianCurrency(summary?.total_utilised_rs || 0)}</p>
+          <p className="text-2xl font-bold text-purple-600 mt-1">{formatAmount(summary?.total_utilised_rs || 0)}</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -208,7 +208,7 @@ export const MarkfedDashboard: React.FC = () => {
           </div>
           <p className="text-xs text-gray-500 uppercase tracking-wider">Balance</p>
           <p className={`text-2xl font-bold mt-1 ${(summary?.total_balance_rs || 0) < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-            Rs. {formatIndianCurrency(summary?.total_balance_rs || 0)}
+            {formatAmount(summary?.total_balance_rs || 0)}
           </p>
           <p className="text-xs text-gray-400 mt-1">Drawn - Utilised</p>
         </div>
@@ -281,15 +281,15 @@ export const MarkfedDashboard: React.FC = () => {
                   className={`border-b hover:bg-gray-50 ${isMyDistrict ? 'bg-yellow-50' : ''}`}
                 >
                   <td className="px-4 py-3 font-medium">{d.district_name}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(d.amount_received_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(d.farmers_paid_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(d.gunnies_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(d.transportation_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(d.unloading_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(d.storage_rs)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-bold bg-gray-50">{formatIndianCurrency(d.total_utilised_rs)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.amount_received_rs)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.farmers_paid_rs)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.gunnies_rs)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.transportation_rs)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.unloading_rs)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(d.storage_rs)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs font-bold bg-gray-50">{formatAmount(d.total_utilised_rs)}</td>
                   <td className={`px-4 py-3 text-right font-mono text-xs ${d.balance_rs < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {formatIndianCurrency(d.balance_rs)}
+                    {formatAmount(d.balance_rs)}
                   </td>
                 </tr>
               );
@@ -305,15 +305,15 @@ export const MarkfedDashboard: React.FC = () => {
             {districtRows.length > 0 && (
               <tr className="bg-blue-50 font-bold border-t-2 border-blue-300">
                 <td className="px-4 py-3">TOTAL</td>
-                <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(districtTotals.amount_received_rs)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(districtTotals.farmers_paid_rs)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(districtTotals.gunnies_rs)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(districtTotals.transportation_rs)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(districtTotals.unloading_rs)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs">{formatIndianCurrency(districtTotals.storage_rs)}</td>
-                <td className="px-4 py-3 text-right font-mono text-xs bg-blue-100">{formatIndianCurrency(districtTotals.total_utilised_rs)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(districtTotals.amount_received_rs)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(districtTotals.farmers_paid_rs)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(districtTotals.gunnies_rs)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(districtTotals.transportation_rs)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(districtTotals.unloading_rs)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs">{formatAmount(districtTotals.storage_rs)}</td>
+                <td className="px-4 py-3 text-right font-mono text-xs bg-blue-100">{formatAmount(districtTotals.total_utilised_rs)}</td>
                 <td className={`px-4 py-3 text-right font-mono text-xs ${districtTotals.balance_rs < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatIndianCurrency(districtTotals.balance_rs)}
+                  {formatAmount(districtTotals.balance_rs)}
                 </td>
               </tr>
             )}

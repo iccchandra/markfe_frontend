@@ -7,7 +7,7 @@ import { Download, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { farmersAPI, drawdownsAPI, seasonsAPI, districtsAPI, exportAPI } from '../../api/services';
 import type { DistrictFarmers, Season, District, DistrictDrawdown } from '../../types/markfed';
-import { UserRole, calcCostOfProcuredQty, formatIndianCurrency, num, flattenDistrict, flattenPacs } from '../../types/markfed';
+import { UserRole, calcCostOfProcuredQty, formatAmount, num, flattenDistrict, flattenPacs } from '../../types/markfed';
 
 interface FarmersRow {
   district_id: number;
@@ -123,7 +123,7 @@ export const FarmersSheetView: React.FC = () => {
     user?.role === UserRole.DM && user.district_id === districtId;
 
   const numCell = (val: number) => (
-    <span className="font-mono text-xs">{formatIndianCurrency(val)}</span>
+    <span className="font-mono text-xs">{formatAmount(val)}</span>
   );
 
   if (loading) {

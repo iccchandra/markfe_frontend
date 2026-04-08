@@ -7,7 +7,7 @@ import { Save, Send, AlertCircle, CheckCircle, PieChart, Loader2, XCircle } from
 import { useAuth } from '../../contexts/AuthContext';
 import { utilizationAPI, utilizationHeadsAPI, drawdownsAPI, districtsAPI, seasonsAPI } from '../../api/services';
 import type { UtilizationHead, Season, District, DistrictDrawdown, ApprovalStatus } from '../../types/markfed';
-import { UserRole, formatIndianCurrency, num } from '../../types/markfed';
+import { UserRole, formatAmount, num } from '../../types/markfed';
 
 // ─── Status Badge ────────────────────────────────
 const STATUS_CONFIG: Record<ApprovalStatus, { label: string; bg: string; text: string; border: string }> = {
@@ -283,13 +283,13 @@ export const UtilizationForm: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500">Total Received</p>
-                <p className="text-lg font-bold text-blue-600">Rs. {formatIndianCurrency(amountReceivedFromHOD)}</p>
+                <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Drawdown Entries</p>
                 <p className="text-sm text-gray-700">
                   {drawdowns.length > 0
-                    ? drawdowns.map((d) => `Rs.${formatIndianCurrency(d.amount_withdrawn_rs)} (UTR: ${d.utr_no})`).join(', ')
+                    ? drawdowns.map((d) => `${formatAmount(d.amount_withdrawn_rs)} (UTR: ${d.utr_no})`).join(', ')
                     : 'No drawdowns recorded for this district'}
                 </p>
               </div>
@@ -367,16 +367,16 @@ export const UtilizationForm: React.FC = () => {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-xs text-gray-500">Total Utilised</p>
-                  <p className="text-lg font-bold text-green-600">Rs. {formatIndianCurrency(totalUtilised)}</p>
+                  <p className="text-lg font-bold text-green-600">{formatAmount(totalUtilised)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Received from HOD</p>
-                  <p className="text-lg font-bold text-blue-600">Rs. {formatIndianCurrency(amountReceivedFromHOD)}</p>
+                  <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Balance with DM</p>
                   <p className={`text-lg font-bold ${balance < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-                    Rs. {formatIndianCurrency(balance)}
+                    {formatAmount(balance)}
                   </p>
                 </div>
               </div>

@@ -7,7 +7,7 @@ import { Save, Send, AlertCircle, CheckCircle, Users, ShieldCheck, XCircle } fro
 import { useAuth } from '../../contexts/AuthContext';
 import { farmersAPI, drawdownsAPI, pacsAPI, districtsAPI, seasonsAPI } from '../../api/services';
 import type { DistrictFarmers, District, Season, PACSEntity, DistrictDrawdown, ApprovalStatus } from '../../types/markfed';
-import { UserRole, calcCostOfProcuredQty, formatIndianCurrency, num } from '../../types/markfed';
+import { UserRole, calcCostOfProcuredQty, formatAmount, num } from '../../types/markfed';
 
 const STATUS_BADGE: Record<ApprovalStatus, { label: string; cls: string }> = {
   draft: { label: 'Draft', cls: 'bg-gray-100 text-gray-600' },
@@ -403,24 +403,24 @@ export const FarmersForm: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                   <p className="text-xs text-gray-500">Cost of Procured Qty</p>
-                  <p className="text-base font-bold text-gray-800">Rs. {formatIndianCurrency(costOfProcuredQty)}</p>
+                  <p className="text-base font-bold text-gray-800">{formatAmount(costOfProcuredQty)}</p>
                   <p className="text-[10px] text-gray-400">Qty x Rs.{mspRate}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Amt Received from HO</p>
-                  <p className="text-base font-bold text-blue-600">Rs. {formatIndianCurrency(amountReceivedFromHO)}</p>
+                  <p className="text-base font-bold text-blue-600">{formatAmount(amountReceivedFromHO)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Balance to Farmers</p>
                   <p className={`text-base font-bold ${balanceToRelease < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-                    Rs. {formatIndianCurrency(balanceToRelease)}
+                    {formatAmount(balanceToRelease)}
                   </p>
                   <p className="text-[10px] text-gray-400">Received - Released</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Balance from HOD</p>
                   <p className={`text-base font-bold ${balanceDueFromHOD < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    Rs. {formatIndianCurrency(balanceDueFromHOD)}
+                    {formatAmount(balanceDueFromHOD)}
                   </p>
                   <p className="text-[10px] text-gray-400">Cost - Received</p>
                 </div>

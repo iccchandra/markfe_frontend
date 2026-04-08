@@ -244,6 +244,26 @@ export function formatCrores(amount: number): string {
   return formatIndianCurrency(amount) + ' Cr';
 }
 
+// Smart formatter: shows in Cr if >= 1 Cr, Lakhs if >= 1 Lakh, else Rs
+export function formatAmount(amountRs: number): string {
+  if (amountRs === 0) return '0';
+  const isNegative = amountRs < 0;
+  const abs = Math.abs(amountRs);
+  let formatted: string;
+  if (abs >= 10000000) {
+    // 1 Cr = 1,00,00,000
+    const cr = abs / 10000000;
+    formatted = cr.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 }) + ' Cr';
+  } else if (abs >= 100000) {
+    // 1 Lakh = 1,00,000
+    const lakhs = abs / 100000;
+    formatted = lakhs.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 }) + ' L';
+  } else {
+    formatted = 'Rs. ' + abs.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  }
+  return isNegative ? `-${formatted}` : formatted;
+}
+
 // MySQL DECIMAL fields come back as strings — coerce to number
 export function num(val: any): number {
   if (val === null || val === undefined || val === '') return 0;

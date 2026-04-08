@@ -10,7 +10,7 @@ import {
   seasonsAPI, districtsAPI, exportAPI,
 } from '../../api/services';
 import type { LoanSanction, DistrictDrawdown, DistrictUtilization, Season, District, UtilizationHead } from '../../types/markfed';
-import { UserRole, calcTotalUtilization, formatIndianCurrency, num, flattenDistrict } from '../../types/markfed';
+import { UserRole, calcTotalUtilization, formatAmount, num, flattenDistrict } from '../../types/markfed';
 
 interface MDRow {
   district_id: number;
@@ -177,7 +177,7 @@ export const MDSheetView: React.FC = () => {
     user?.role === UserRole.DM && user.district_id === districtId;
 
   const numCell = (val: number) => (
-    <span className="font-mono text-xs">{formatIndianCurrency(val)}</span>
+    <span className="font-mono text-xs">{formatAmount(val)}</span>
   );
 
   if (loading) {
