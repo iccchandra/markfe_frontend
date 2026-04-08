@@ -65,9 +65,9 @@ export const MarkfedLogin: React.FC = () => {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="relative">
-              <img src="/telangana-govt.png" alt="Telangana Govt" className="w-14 h-14 object-contain" />
-              <img src="/markfed-logo.png" alt="TG MARKFED" className="w-16 h-16 object-contain" />
-              <img src="/tg-rising.jpeg" alt="Telangana Rising" className="w-14 h-14 object-contain" />
+              <img src={process.env.PUBLIC_URL + "/telangana-govt.png"} alt="Telangana Govt" className="w-14 h-14 object-contain" />
+              <img src={process.env.PUBLIC_URL + "/markfed-logo.png"} alt="TG MARKFED" className="w-16 h-16 object-contain" />
+              <img src={process.env.PUBLIC_URL + "/tg-rising.jpeg"} alt="Telangana Rising" className="w-14 h-14 object-contain" />
             </div>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
