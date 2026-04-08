@@ -65,18 +65,16 @@ export const MarkfedLogin: React.FC = () => {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="relative">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/40">
-                <span className="text-white font-bold text-3xl">M</span>
-              </div>
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center border-3 border-white shadow-lg">
-                <Warehouse className="w-4 h-4 text-white" />
-              </div>
+              <img src="/logo (3).png" alt="Telangana Govt" className="w-14 h-14 object-contain" />
+              <img src="/1.png" alt="TG MARKFED" className="w-16 h-16 object-contain" />
+              <img src="/TGRaising.jpeg" alt="Telangana Rising" className="w-14 h-14 object-contain" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            MARKFED Telangana
+          <h1 className="text-2xl font-bold text-gray-900">
+            TG MARKFED
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Maize MSP Data Entry Portal</p>
+          <p className="text-sm text-gray-600">Telangana Cooperative Marketing Federation Ltd.</p>
+          <p className="text-gray-500 text-xs mt-1">Maize MSP Data Entry Portal</p>
         </div>
 
         {/* Login Form */}

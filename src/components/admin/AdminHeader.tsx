@@ -93,15 +93,12 @@ export const AdminHeader: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <Menu className="w-6 h-6" />
           </button>
           
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">M</span>
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                MARKFED
-              </h1>
-              <p className="text-xs text-gray-500">Telangana State</p>
+          <div className="flex items-center gap-2">
+            <img src="/logo (3).png" alt="Telangana Govt" className="w-8 h-8 object-contain" />
+            <img src="/1.png" alt="TG MARKFED" className="w-8 h-8 object-contain" />
+            <div className="hidden sm:block ml-1">
+              <h1 className="text-base font-bold text-gray-900">TG MARKFED</h1>
+              <p className="text-[10px] text-gray-500">Maize MSP Portal</p>
             </div>
           </div>
 

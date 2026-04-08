@@ -145,16 +145,13 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       >
         <div className="p-4">
           {/* Logo */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-xl">M</span>
-              </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <img src="/logo (3).png" alt="Telangana Govt" className="w-9 h-9 object-contain" />
+              <img src="/1.png" alt="TG MARKFED" className="w-9 h-9 object-contain" />
               <div>
-                <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  MARKFED
-                </h2>
-                <p className="text-xs text-gray-600">Telangana</p>
+                <h2 className="text-sm font-bold text-gray-900">TG MARKFED</h2>
+                <p className="text-[10px] text-gray-500">Maize MSP Portal</p>
               </div>
             </div>
             <button onClick={onClose} className="lg:hidden p-2 hover:bg-gray-100 rounded-lg">
