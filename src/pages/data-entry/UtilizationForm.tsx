@@ -1,12 +1,13 @@
 // ============================================
 // pages/data-entry/UtilizationForm.tsx — Dynamic Utilization Heads
-// DM fills utilization per their district
+// DM fills utilization per their district (districtId from URL param)
 // ============================================
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Save, Send, AlertCircle, CheckCircle, PieChart, Loader2, XCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Save, Send, AlertCircle, CheckCircle, PieChart, Loader2, XCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { utilizationAPI, utilizationHeadsAPI, drawdownsAPI, districtsAPI, seasonsAPI } from '../../api/services';
-import type { UtilizationHead, Season, District, DistrictDrawdown, ApprovalStatus } from '../../types/markfed';
+import type { UtilizationHead, Season, DistrictDrawdown, ApprovalStatus } from '../../types/markfed';
 import { UserRole, formatAmount, num } from '../../types/markfed';
 
 // ─── Status Badge ────────────────────────────────
@@ -35,16 +36,18 @@ interface FormState {
 const emptyForm: FormState = { remarks: '', values: {} };
 
 export const UtilizationForm: React.FC = () => {
+  const { districtId: districtIdParam } = useParams<{ districtId: string }>();
+  const navigate = useNavigate();
   const { user, canEditField } = useAuth();
   const baseCanEdit = canEditField('utilization');
 
+  const selectedDistrictId = parseInt(districtIdParam || '0');
+
   // Core data
   const [season, setSeason] = useState<Season | null>(null);
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<number>(0);
+  const [districtName, setDistrictName] = useState<string>('');
   const [heads, setHeads] = useState<UtilizationHead[]>([]);
   const [drawdowns, setDrawdowns] = useState<DistrictDrawdown[]>([]);
-  const [districtStatuses, setDistrictStatuses] = useState<Record<number, ApprovalStatus>>({});
 
   // Form
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -60,8 +63,17 @@ export const UtilizationForm: React.FC = () => {
   const isLocked = status === 'submitted' || status === 'approved';
   const canEdit = baseCanEdit && !isLocked;
 
-  // ─── Load season, districts, utilization heads on mount ───
+  // DM enforcement: if DM user, their district_id must match the URL param
   useEffect(() => {
+    if (user?.role === UserRole.DM && user.district_id && selectedDistrictId !== user.district_id) {
+      navigate(`/data-entry/utilization/${user.district_id}`, { replace: true });
+    }
+  }, [user, selectedDistrictId, navigate]);
+
+  // ─── Load season, district name, utilization heads on mount ───
+  useEffect(() => {
+    if (!selectedDistrictId) return;
+
     const load = async () => {
       try {
         const [seasonRes, distRes, headsRes] = await Promise.all([
@@ -70,25 +82,15 @@ export const UtilizationForm: React.FC = () => {
           utilizationHeadsAPI.list({ is_active: true }),
         ]);
         setSeason(seasonRes.data);
-        setDistricts(distRes.data);
+
+        // Find district name from list
+        const districts = distRes.data;
+        const district = districts.find((d: any) => d.id === selectedDistrictId);
+        setDistrictName(district?.name || `District #${selectedDistrictId}`);
 
         // Sort heads by display_order
         const sortedHeads = [...headsRes.data].sort((a, b) => a.display_order - b.display_order);
         setHeads(sortedHeads);
-
-        // DM is locked to their district
-        if (user?.role === UserRole.DM && user.district_id) {
-          setSelectedDistrictId(user.district_id);
-        }
-
-        // Load all utilization records to show district statuses
-        try {
-          const utilAllRes = await utilizationAPI.listAll(seasonRes.data.id);
-          const utilAll = Array.isArray(utilAllRes.data) ? utilAllRes.data : (utilAllRes.data as any)?.data || [];
-          const statusMap: Record<number, ApprovalStatus> = {};
-          utilAll.forEach((u: any) => { statusMap[u.district_id] = u.status || 'draft'; });
-          setDistrictStatuses(statusMap);
-        } catch { /* no data yet */ }
       } catch {
         setMessage({ type: 'error', text: 'Failed to load initial data' });
       } finally {
@@ -96,9 +98,9 @@ export const UtilizationForm: React.FC = () => {
       }
     };
     load();
-  }, [user]);
+  }, [selectedDistrictId]);
 
-  // ─── Load utilization + drawdown data when district changes ───
+  // ─── Load utilization + drawdown data when district/season ready ───
   useEffect(() => {
     if (!season || !selectedDistrictId) return;
 
@@ -210,8 +212,6 @@ export const UtilizationForm: React.FC = () => {
     }
   };
 
-  const districtName = districts.find((d) => d.id === selectedDistrictId)?.name || '';
-
   // ─── Render ────────────────────────────────────────
   if (loading) {
     return (
@@ -222,8 +222,35 @@ export const UtilizationForm: React.FC = () => {
     );
   }
 
+  if (!selectedDistrictId) {
+    return (
+      <div className="max-w-4xl mx-auto py-10">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          Invalid district. Please go back and select a district.
+        </div>
+        <button
+          onClick={() => navigate('/data-entry/utilization')}
+          className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to List
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Back to List */}
+      <button
+        onClick={() => navigate('/data-entry/utilization')}
+        className="mb-4 flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to List
+      </button>
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
@@ -231,7 +258,7 @@ export const UtilizationForm: React.FC = () => {
             <PieChart className="w-7 h-7 text-green-600" />
             Fund Utilization
           </h1>
-          {selectedDistrictId > 0 && <StatusBadge status={status} />}
+          <StatusBadge status={status} />
         </div>
         <p className="text-sm text-gray-500 mt-1">
           District-wise utilization of funds
@@ -239,208 +266,168 @@ export const UtilizationForm: React.FC = () => {
         </p>
       </div>
 
-      {/* District Overview + Selector */}
-      {user?.role === UserRole.SUPER_ADMIN ? (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select District</label>
-          <div className="flex flex-wrap gap-2">
-            {districts.map((d) => {
-              const ds = districtStatuses[d.id];
-              const isSelected = selectedDistrictId === d.id;
-              const statusColor = !ds ? 'bg-gray-100 text-gray-600 border-gray-200'
-                : ds === 'approved' ? 'bg-green-50 text-green-700 border-green-300'
-                : ds === 'submitted' ? 'bg-blue-50 text-blue-700 border-blue-300'
-                : ds === 'rejected' ? 'bg-red-50 text-red-700 border-red-300'
-                : 'bg-yellow-50 text-yellow-700 border-yellow-300';
-              return (
-                <button key={d.id} onClick={() => setSelectedDistrictId(d.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${statusColor} ${isSelected ? 'ring-2 ring-blue-500 shadow-md' : 'hover:shadow'}`}>
-                  {d.name}
-                  {ds && <span className="ml-1 opacity-70">({ds === 'approved' ? 'A' : ds === 'submitted' ? 'S' : ds === 'rejected' ? 'R' : 'D'})</span>}
-                  {!ds && <span className="ml-1 opacity-50">(new)</span>}
-                </button>
-              );
-            })}
+      {/* District indicator */}
+      <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
+        <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
+      </div>
+
+      {/* Rejection reason banner */}
+      {status === 'rejected' && rejectionReason && (
+        <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm">
+          <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">Rejected</p>
+            <p className="mt-0.5">{rejectionReason}</p>
           </div>
         </div>
-      ) : (
-        selectedDistrictId > 0 && (
-          <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
-            <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
-            {districtStatuses[selectedDistrictId] && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_CONFIG[districtStatuses[selectedDistrictId]].bg} ${STATUS_CONFIG[districtStatuses[selectedDistrictId]].text}`}>
-                {STATUS_CONFIG[districtStatuses[selectedDistrictId]].label}
-              </span>
-            )}
-          </div>
-        )
       )}
 
-      {!selectedDistrictId ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center text-gray-400">
-          Please select a district to fill utilization data.
+      {/* Locked banner */}
+      {isLocked && (
+        <div className="mb-4 flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          This record has been {status}. Data shown below is read-only.
         </div>
-      ) : (
-        <>
-          {/* Rejection reason banner */}
-          {status === 'rejected' && rejectionReason && (
-            <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm">
-              <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-semibold">Rejected</p>
-                <p className="mt-0.5">{rejectionReason}</p>
-              </div>
-            </div>
-          )}
+      )}
 
-          {/* Locked banner */}
-          {isLocked && (
-            <div className="mb-4 flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
-              <AlertCircle className="w-4 h-4" />
-              This record has been {status}. Data shown below is read-only.
-            </div>
-          )}
-
-          {/* Drawdown Info (read-only) */}
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Funds Received from HOD</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-gray-500">Total Received</p>
-                <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Drawdown Entries</p>
-                <p className="text-sm text-gray-700">
-                  {drawdowns.length > 0
-                    ? `${drawdowns.length} transfer(s)`
-                    : 'No drawdowns recorded for this district'}
-                </p>
-              </div>
-            </div>
+      {/* Drawdown Info (read-only) */}
+      <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">Funds Received from HOD</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-gray-500">Total Received</p>
+            <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
           </div>
+          <div>
+            <p className="text-xs text-gray-500">Drawdown Entries</p>
+            <p className="text-sm text-gray-700">
+              {drawdowns.length > 0
+                ? `${drawdowns.length} transfer(s)`
+                : 'No drawdowns recorded for this district'}
+            </p>
+          </div>
+        </div>
+      </div>
 
-          {/* Over-utilization warning */}
-          {overUtilised && (
-            <div className="mb-4 flex items-center gap-2 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-700 text-sm">
-              <AlertCircle className="w-4 h-4" />
-              Total utilization exceeds received amount from HOD
-            </div>
-          )}
+      {/* Over-utilization warning */}
+      {overUtilised && (
+        <div className="mb-4 flex items-center gap-2 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-700 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          Total utilization exceeds received amount from HOD
+        </div>
+      )}
 
-          {/* Message */}
-          {message && (
-            <div
-              className={`mb-4 flex items-center gap-2 p-3 rounded-lg text-sm ${
-                message.type === 'success'
-                  ? 'bg-green-50 border border-green-200 text-green-700'
-                  : 'bg-red-50 border border-red-200 text-red-700'
-              }`}
-            >
-              {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-              <span>{message.text}</span>
-            </div>
-          )}
+      {/* Message */}
+      {message && (
+        <div
+          className={`mb-4 flex items-center gap-2 p-3 rounded-lg text-sm ${
+            message.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}
+        >
+          {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span>{message.text}</span>
+        </div>
+      )}
 
-          {/* Live Running Total */}
-          {heads.length > 0 && totalUtilised > 0 && (
-            <div className="mb-3 px-4 py-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between sticky top-0 z-10">
-              <span className="text-sm font-medium text-green-700">Running Total</span>
-              <span className="text-lg font-bold text-green-700">{formatAmount(totalUtilised)}</span>
-            </div>
-          )}
+      {/* Live Running Total */}
+      {heads.length > 0 && totalUtilised > 0 && (
+        <div className="mb-3 px-4 py-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between sticky top-0 z-10">
+          <span className="text-sm font-medium text-green-700">Running Total</span>
+          <span className="text-lg font-bold text-green-700">{formatAmount(totalUtilised)}</span>
+        </div>
+      )}
 
-          {/* Utilization Form — dynamic fields */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            {heads.length === 0 ? (
-              <p className="text-center text-gray-400 py-8">No utilization heads configured. Contact the administrator.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {heads.map((head) => (
-                  <div key={head.id}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {head.entry_role === UserRole.DM && (
-                        <span className="text-green-500 text-xs mr-1">DM</span>
-                      )}
-                      {head.name}
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Rs.</span>
-                      <input
-                        type="number"
-                        value={form.values[head.id] || ''}
-                        onChange={(e) => handleValueChange(head.id, parseFloat(e.target.value) || 0)}
-                        disabled={!canEdit}
-                        min={0}
-                        step={0.01}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-right focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50"
-                      />
-                      {(form.values[head.id] || 0) > 0 && (
-                        <p className="text-[10px] text-blue-500 mt-0.5 text-right">= {formatAmount(form.values[head.id])}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Remarks */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                  <textarea
-                    value={form.remarks}
-                    onChange={(e) => handleRemarksChange(e.target.value)}
+      {/* Utilization Form — dynamic fields */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        {heads.length === 0 ? (
+          <p className="text-center text-gray-400 py-8">No utilization heads configured. Contact the administrator.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {heads.map((head) => (
+              <div key={head.id}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {head.entry_role === UserRole.DM && (
+                    <span className="text-green-500 text-xs mr-1">DM</span>
+                  )}
+                  {head.name}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Rs.</span>
+                  <input
+                    type="number"
+                    value={form.values[head.id] || ''}
+                    onChange={(e) => handleValueChange(head.id, parseFloat(e.target.value) || 0)}
                     disabled={!canEdit}
-                    maxLength={500}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                    min={0}
+                    step={0.01}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-right focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50"
                   />
+                  {(form.values[head.id] || 0) > 0 && (
+                    <p className="text-[10px] text-blue-500 mt-0.5 text-right">= {formatAmount(form.values[head.id])}</p>
+                  )}
                 </div>
               </div>
-            )}
+            ))}
 
-            {/* Auto-Calculated Summary */}
-            <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-xs text-gray-500">Total Utilised</p>
-                  <p className="text-lg font-bold text-green-600">{formatAmount(totalUtilised)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Received from HOD</p>
-                  <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Balance with DM</p>
-                  <p className={`text-lg font-bold ${balance < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-                    {formatAmount(balance)}
-                  </p>
-                </div>
-              </div>
+            {/* Remarks */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+              <textarea
+                value={form.remarks}
+                onChange={(e) => handleRemarksChange(e.target.value)}
+                disabled={!canEdit}
+                maxLength={500}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+              />
             </div>
-
-            {/* Actions */}
-            {canEdit && (
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  onClick={() => handleSave(false)}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Save Draft
-                </button>
-                <button
-                  onClick={() => handleSave(true)}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-green-500/30 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Submit for Review
-                </button>
-              </div>
-            )}
           </div>
-        </>
-      )}
+        )}
+
+        {/* Auto-Calculated Summary */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-gray-500">Total Utilised</p>
+              <p className="text-lg font-bold text-green-600">{formatAmount(totalUtilised)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Received from HOD</p>
+              <p className="text-lg font-bold text-blue-600">{formatAmount(amountReceivedFromHOD)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Balance with DM</p>
+              <p className={`text-lg font-bold ${balance < 0 ? 'text-red-600' : 'text-orange-600'}`}>
+                {formatAmount(balance)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        {canEdit && (
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Draft
+            </button>
+            <button
+              onClick={() => handleSave(true)}
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-green-500/30 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Submit for Review
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

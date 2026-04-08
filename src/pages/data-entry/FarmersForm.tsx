@@ -1,9 +1,11 @@
 // ============================================
-// pages/data-entry/FarmersForm.tsx — District Farmers Data
-// DM fills farmer procurement & payment data
+// pages/data-entry/FarmersForm.tsx — District Farmers Data Form
+// DM fills farmer procurement & payment data for a single district
+// District comes from URL param: /data-entry/farmers/:districtId
 // ============================================
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Send, AlertCircle, CheckCircle, Users, ShieldCheck, XCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Save, Send, AlertCircle, CheckCircle, Users, ShieldCheck, XCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { farmersAPI, drawdownsAPI, pacsAPI, districtsAPI, seasonsAPI } from '../../api/services';
 import type { DistrictFarmers, District, Season, PACSEntity, DistrictDrawdown, ApprovalStatus } from '../../types/markfed';
@@ -29,17 +31,19 @@ const emptyFarmers: DistrictFarmers = {
 };
 
 export const FarmersForm: React.FC = () => {
+  const { districtId } = useParams<{ districtId: string }>();
+  const navigate = useNavigate();
   const { user, canEditField, hasRole } = useAuth();
   const canEditBase = canEditField('farmers');
   const canApprove = hasRole(UserRole.AO_CAO) || hasRole(UserRole.MD) || hasRole(UserRole.SUPER_ADMIN);
 
+  const selectedDistrictId = parseInt(districtId || '0', 10);
+
   const [season, setSeason] = useState<Season | null>(null);
   const [districts, setDistricts] = useState<District[]>([]);
   const [pacsEntities, setPacsEntities] = useState<PACSEntity[]>([]);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<number>(0);
   const [form, setForm] = useState<DistrictFarmers>(emptyFarmers);
   const [drawdowns, setDrawdowns] = useState<DistrictDrawdown[]>([]);
-  const [districtStatuses, setDistrictStatuses] = useState<Record<number, ApprovalStatus>>({});
   const [status, setStatus] = useState<ApprovalStatus>('draft');
   const [rejectionReason, setRejectionReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -48,25 +52,19 @@ export const FarmersForm: React.FC = () => {
   const canEdit = canEditBase && (status === 'draft' || status === 'rejected');
   const isLocked = status === 'submitted' || status === 'approved';
 
+  // DM users can only access their own district
+  useEffect(() => {
+    if (user?.role === UserRole.DM && user.district_id && selectedDistrictId !== user.district_id) {
+      navigate('/data-entry/farmers', { replace: true });
+    }
+  }, [user, selectedDistrictId, navigate]);
+
   useEffect(() => {
     const load = async () => {
       try {
         const [seasonRes, distRes] = await Promise.all([seasonsAPI.active(), districtsAPI.list()]);
         setSeason(seasonRes.data);
         setDistricts(distRes.data);
-
-        if (user?.role === UserRole.DM && user.district_id) {
-          setSelectedDistrictId(user.district_id);
-        }
-
-        // Load all farmers records for district status overview
-        try {
-          const farmAllRes = await farmersAPI.listAll(seasonRes.data.id);
-          const farmAll = Array.isArray(farmAllRes.data) ? farmAllRes.data : (farmAllRes.data as any)?.data || [];
-          const statusMap: Record<number, ApprovalStatus> = {};
-          farmAll.forEach((f: any) => { statusMap[f.district_id] = f.status || 'draft'; });
-          setDistrictStatuses(statusMap);
-        } catch { /* no data yet */ }
       } catch {
         setMessage({ type: 'error', text: 'Failed to load data' });
       }
@@ -212,6 +210,15 @@ export const FarmersForm: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Back button */}
+      <button
+        onClick={() => navigate('/data-entry/farmers')}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to List
+      </button>
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
@@ -219,7 +226,7 @@ export const FarmersForm: React.FC = () => {
           District Farmers Data
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Procurement & Payment Tracking
+          Procurement &amp; Payment Tracking
           {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
         </p>
       </div>
@@ -236,46 +243,16 @@ export const FarmersForm: React.FC = () => {
         </div>
       )}
 
-      {/* District Selector */}
-      {user?.role === UserRole.SUPER_ADMIN ? (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select District</label>
-          <div className="flex flex-wrap gap-2">
-            {districts.map((d) => {
-              const ds = districtStatuses[d.id];
-              const isSelected = selectedDistrictId === d.id;
-              const statusColor = !ds ? 'bg-gray-100 text-gray-600 border-gray-200'
-                : ds === 'approved' ? 'bg-green-50 text-green-700 border-green-300'
-                : ds === 'submitted' ? 'bg-blue-50 text-blue-700 border-blue-300'
-                : ds === 'rejected' ? 'bg-red-50 text-red-700 border-red-300'
-                : 'bg-yellow-50 text-yellow-700 border-yellow-300';
-              return (
-                <button key={d.id} onClick={() => setSelectedDistrictId(d.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${statusColor} ${isSelected ? 'ring-2 ring-blue-500 shadow-md' : 'hover:shadow'}`}>
-                  {d.name}
-                  {ds && <span className="ml-1 opacity-70">({ds === 'approved' ? 'A' : ds === 'submitted' ? 'S' : ds === 'rejected' ? 'R' : 'D'})</span>}
-                  {!ds && <span className="ml-1 opacity-50">(new)</span>}
-                </button>
-              );
-            })}
-          </div>
+      {/* District display */}
+      {selectedDistrictId > 0 && (
+        <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
+          <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
         </div>
-      ) : (
-        selectedDistrictId > 0 && (
-          <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
-            <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
-            {districtStatuses[selectedDistrictId] && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[districtStatuses[selectedDistrictId]].cls}`}>
-                {STATUS_BADGE[districtStatuses[selectedDistrictId]].label}
-              </span>
-            )}
-          </div>
-        )
       )}
 
       {!selectedDistrictId ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center text-gray-400">
-          Please select a district.
+          Invalid district. Please go back and select a district.
         </div>
       ) : (
         <>
@@ -306,7 +283,6 @@ export const FarmersForm: React.FC = () => {
               {/* District (display only) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  
                   Maize Procurement District
                 </label>
                 <input
@@ -320,7 +296,6 @@ export const FarmersForm: React.FC = () => {
               {/* PACS Count */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  
                   No. of PACS/DCMS/FPO
                 </label>
                 <input
@@ -336,7 +311,6 @@ export const FarmersForm: React.FC = () => {
               {/* PACS Entity */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  
                   Name of PACS/DCMS/FPO
                 </label>
                 <select
@@ -357,7 +331,6 @@ export const FarmersForm: React.FC = () => {
               {/* Farmers Count */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  
                   Total Farmers Benefited
                 </label>
                 <input
@@ -373,7 +346,6 @@ export const FarmersForm: React.FC = () => {
               {/* Qty Procured */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  
                   Total Qty Procured (Qtls)
                 </label>
                 <input
@@ -390,7 +362,6 @@ export const FarmersForm: React.FC = () => {
               {/* Payment Released */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  
                   Payment Released to Farmers (Rs.)
                 </label>
                 <input
@@ -410,7 +381,6 @@ export const FarmersForm: React.FC = () => {
               {/* Remarks */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  
                   Remarks
                 </label>
                 <textarea

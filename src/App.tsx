@@ -13,7 +13,9 @@ import MarkfedDashboard from './pages/dashboard/MarkfedDashboard';
 // Maize MSP — Data Entry
 import LoanSanctionForm from './pages/data-entry/LoanSanctionForm';
 import DrawdownsForm from './pages/data-entry/DrawdownsForm';
+import UtilizationList from './pages/data-entry/UtilizationList';
 import UtilizationForm from './pages/data-entry/UtilizationForm';
+import FarmersList from './pages/data-entry/FarmersList';
 import FarmersForm from './pages/data-entry/FarmersForm';
 
 // Maize MSP — Reports
@@ -67,8 +69,10 @@ function App() {
             <Route path="data-entry">
               <Route path="loan" element={<LoanSanctionForm />} />
               <Route path="drawdowns" element={<DrawdownsForm />} />
-              <Route path="utilization" element={<UtilizationForm />} />
-              <Route path="farmers" element={<FarmersForm />} />
+              <Route path="utilization" element={<UtilizationList />} />
+              <Route path="utilization/:districtId" element={<UtilizationForm />} />
+              <Route path="farmers" element={<FarmersList />} />
+              <Route path="farmers/:districtId" element={<FarmersForm />} />
             </Route>
 
             {/* ==================== REPORTS ==================== */}
