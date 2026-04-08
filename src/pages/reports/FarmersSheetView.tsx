@@ -211,7 +211,7 @@ export const FarmersSheetView: React.FC = () => {
               <th className="px-3 py-2 text-right border-r bg-gray-200">Received (Auto)</th>
               <th className="px-3 py-2 text-right border-r bg-green-50">Released</th>
               <th className="px-3 py-2 text-right border-r bg-gray-200">Bal Farmers (Auto)</th>
-              <th className="px-3 py-2 text-right border-r bg-gray-200">Bal HOD (Auto)</th>
+              <th className="px-3 py-2 text-right border-r bg-gray-200" title="Positive = Due from HOD, Negative = Surplus with District">Bal HOD (Auto)</th>
               <th className="px-3 py-2 text-right border-r">Records</th>
               <th className="px-3 py-2 text-left">Remarks</th>
             </tr>
@@ -232,8 +232,8 @@ export const FarmersSheetView: React.FC = () => {
                 <td className={`px-3 py-2 text-right border-r bg-gray-50 ${row.balance_to_farmers < 0 ? 'text-red-600' : ''}`}>
                   {numCell(row.balance_to_farmers)}
                 </td>
-                <td className={`px-3 py-2 text-right border-r bg-gray-50 ${row.balance_from_hod > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {numCell(row.balance_from_hod)}
+                <td className={`px-3 py-2 text-right border-r bg-gray-50 ${row.balance_from_hod > 0 ? 'text-red-600' : 'text-green-600'}`} title={row.balance_from_hod > 0 ? 'Due from HOD' : 'Surplus with District'}>
+                  {numCell(Math.abs(row.balance_from_hod))} {row.balance_from_hod > 0 ? '(Due)' : row.balance_from_hod < 0 ? '(Surplus)' : ''}
                 </td>
                 <td className="px-3 py-2 text-right border-r text-gray-500">{row.record_count}</td>
                 <td className="px-3 py-2 max-w-[120px] truncate">{row.remarks}</td>

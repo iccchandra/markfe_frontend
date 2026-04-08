@@ -540,9 +540,9 @@ export const FarmersForm: React.FC = () => {
               <p className="text-[10px] text-gray-400">Received - Released</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Balance from HOD</p>
-              <p className={`text-base font-bold ${balanceDueFromHOD < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatAmount(balanceDueFromHOD)}
+              <p className="text-xs text-gray-500">{balanceDueFromHOD >= 0 ? 'Due from HOD' : 'Surplus with District'}</p>
+              <p className={`text-base font-bold ${balanceDueFromHOD > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formatAmount(Math.abs(balanceDueFromHOD))}
               </p>
               <p className="text-[10px] text-gray-400">Cost - Received</p>
             </div>
