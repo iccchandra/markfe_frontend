@@ -1,142 +1,216 @@
 // ============================================
 // pages/data-entry/FarmersList.tsx — District Farmers List Page
-// Shows all districts with farmer procurement data summary
+// Shows ALL farmer records (multiple per district per season)
 // ============================================
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Eye, Pencil, ShieldCheck, XCircle, Loader2 } from 'lucide-react';
+import {
+  Users, Loader2, Plus, Eye, Edit2, Trash2, Send, CheckCircle, XCircle,
+} from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { seasonsAPI, districtsAPI, farmersAPI } from '../../api/services';
 import type { Season, District, DistrictFarmers } from '../../types/markfed';
-import { UserRole, formatAmount, calcCostOfProcuredQty, num, ApprovalStatus } from '../../types/markfed';
-import { useAuth } from '../../contexts/AuthContext';
+import { UserRole, formatAmount, num, ApprovalStatus } from '../../types/markfed';
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  pending:   { label: 'Pending',   cls: 'bg-gray-100 text-gray-500' },
-  draft:     { label: 'Draft',     cls: 'bg-yellow-100 text-yellow-700' },
-  submitted: { label: 'Submitted', cls: 'bg-blue-100 text-blue-700' },
-  approved:  { label: 'Approved',  cls: 'bg-green-100 text-green-700' },
-  rejected:  { label: 'Rejected',  cls: 'bg-red-100 text-red-700' },
+// ─── Status Badge ────────────────────────────────
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
+  draft:     { label: 'Draft',     bg: 'bg-yellow-50',  text: 'text-yellow-700', border: 'border-yellow-300' },
+  submitted: { label: 'Submitted', bg: 'bg-blue-50',    text: 'text-blue-700',   border: 'border-blue-300' },
+  approved:  { label: 'Approved',  bg: 'bg-green-50',   text: 'text-green-700',  border: 'border-green-300' },
+  rejected:  { label: 'Rejected',  bg: 'bg-red-50',     text: 'text-red-700',    border: 'border-red-300' },
+  pending:   { label: 'Pending',   bg: 'bg-gray-100',   text: 'text-gray-500',   border: 'border-gray-300' },
+};
+
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+      {cfg.label}
+    </span>
+  );
 };
 
 export const FarmersList: React.FC = () => {
   const navigate = useNavigate();
   const { user, hasRole } = useAuth();
-  const canApprove = hasRole(UserRole.AO_CAO) || hasRole(UserRole.MD) || hasRole(UserRole.SUPER_ADMIN);
 
+  const isDM = user?.role === UserRole.DM;
+  const canApprove = hasRole(UserRole.AO_CAO, UserRole.MD, UserRole.SUPER_ADMIN);
+
+  // Data
   const [season, setSeason] = useState<Season | null>(null);
+  const [records, setRecords] = useState<DistrictFarmers[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
-  const [farmersRecords, setFarmersRecords] = useState<DistrictFarmers[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Action state
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [rejectModalRecordId, setRejectModalRecordId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // District name map for display
+  const districtMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    districts.forEach((d) => { map[d.id] = d.name; });
+    return map;
+  }, [districts]);
+
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      setError(null);
       try {
         const [seasonRes, distRes] = await Promise.all([
           seasonsAPI.active(),
           districtsAPI.list(),
         ]);
-        setSeason(seasonRes.data);
-        setDistricts(distRes.data);
 
-        // Load all farmers records for the active season
-        try {
-          const farmAllRes = await farmersAPI.listAll(seasonRes.data.id);
-          const farmAll = Array.isArray(farmAllRes.data)
-            ? farmAllRes.data
-            : (farmAllRes.data as any)?.data || [];
-          setFarmersRecords(farmAll);
-        } catch {
-          // No data yet — leave empty
-          setFarmersRecords([]);
+        const activeSeason = seasonRes.data;
+        const districtList: District[] = distRes.data;
+        setSeason(activeSeason);
+        setDistricts(districtList);
+
+        // Load farmers records - filtered by district for DM users
+        let farmRecords: DistrictFarmers[] = [];
+        if (isDM && user?.district_id) {
+          const farmRes = await farmersAPI.listByDistrict(activeSeason.id, user.district_id);
+          const raw = farmRes.data;
+          farmRecords = Array.isArray(raw) ? raw : (raw as any)?.data || [];
+        } else {
+          const farmRes = await farmersAPI.listAll(activeSeason.id);
+          const raw = farmRes.data;
+          farmRecords = Array.isArray(raw) ? raw : (raw as any)?.data || [];
         }
-      } catch {
-        setError('Failed to load data. Please try again.');
+
+        setRecords(farmRecords);
+      } catch (err: any) {
+        setError(err?.response?.data?.message || 'Failed to load data');
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [user]);
 
-  const mspRate = num(season?.msp_rate);
-
-  // Build rows: one per district, matched with farmers record
-  const rows = useMemo(() => {
-    let filteredDistricts = districts;
-
-    // DM users only see their own district
-    if (user?.role === UserRole.DM && user.district_id) {
-      filteredDistricts = districts.filter((d) => d.id === user.district_id);
-    }
-
-    return filteredDistricts.map((district) => {
-      const record = farmersRecords.find((f) => f.district_id === district.id);
-      const qty = num(record?.quantity_procured_qtl);
-      const cost = calcCostOfProcuredQty(qty, mspRate);
-      const status: string = record?.status || 'pending';
-
-      return {
-        district,
-        record,
-        pacsCount: num(record?.pacs_count),
-        farmersCount: num(record?.farmers_count),
-        qty,
-        cost,
-        paymentReleased: num(record?.payment_released_to_farmers_rs),
-        status,
-      };
+  // ─── Summary: total across all records, grouped by district ───
+  const summaryByDistrict = useMemo(() => {
+    const map: Record<number, { districtName: string; totalQty: number; totalPayment: number; count: number }> = {};
+    records.forEach((r) => {
+      const did = r.district_id;
+      if (!map[did]) {
+        map[did] = {
+          districtName: r.district_name || districtMap[did] || `District #${did}`,
+          totalQty: 0,
+          totalPayment: 0,
+          count: 0,
+        };
+      }
+      map[did].totalQty += num(r.quantity_procured_qtl);
+      map[did].totalPayment += num(r.payment_released_to_farmers_rs);
+      map[did].count += 1;
     });
-  }, [districts, farmersRecords, mspRate, user]);
+    return Object.values(map).sort((a, b) => a.districtName.localeCompare(b.districtName));
+  }, [records, districtMap]);
 
-  const handleApprove = async (districtId: number) => {
+  const grandTotalPayment = useMemo(
+    () => summaryByDistrict.reduce((sum, s) => sum + s.totalPayment, 0),
+    [summaryByDistrict]
+  );
+
+  // ─── Action handlers ──────────────────────────────
+  const handleSubmit = async (recordId: number) => {
     if (!season) return;
-    if (!window.confirm('Approve this farmers data?')) return;
+    if (!window.confirm('Submit this farmers record for review?')) return;
+    setActionLoading(recordId);
+    setMessage(null);
     try {
-      await farmersAPI.approve(season.id, districtId);
-      // Refresh records
-      const farmAllRes = await farmersAPI.listAll(season.id);
-      const farmAll = Array.isArray(farmAllRes.data)
-        ? farmAllRes.data
-        : (farmAllRes.data as any)?.data || [];
-      setFarmersRecords(farmAll);
+      await farmersAPI.submit(season.id, recordId);
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? { ...r, status: 'submitted' as ApprovalStatus } : r))
+      );
+      setMessage({ type: 'success', text: 'Record submitted for review' });
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to approve');
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to submit' });
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleReject = async (districtId: number) => {
+  const handleApprove = async (recordId: number) => {
     if (!season) return;
-    const reason = window.prompt('Rejection reason:');
-    if (!reason) return;
+    if (!window.confirm('Approve this farmers record?')) return;
+    setActionLoading(recordId);
+    setMessage(null);
     try {
-      await farmersAPI.reject(season.id, districtId, reason);
-      // Refresh records
-      const farmAllRes = await farmersAPI.listAll(season.id);
-      const farmAll = Array.isArray(farmAllRes.data)
-        ? farmAllRes.data
-        : (farmAllRes.data as any)?.data || [];
-      setFarmersRecords(farmAll);
+      await farmersAPI.approve(season.id, recordId);
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? { ...r, status: 'approved' as ApprovalStatus } : r))
+      );
+      setMessage({ type: 'success', text: 'Record approved successfully' });
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to reject');
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to approve' });
+    } finally {
+      setActionLoading(null);
     }
   };
 
+  const handleReject = async () => {
+    if (!season || !rejectModalRecordId) return;
+    if (!rejectReason.trim()) return;
+    setActionLoading(rejectModalRecordId);
+    setMessage(null);
+    try {
+      await farmersAPI.reject(season.id, rejectModalRecordId, rejectReason.trim());
+      setRecords((prev) =>
+        prev.map((r) => (r.id === rejectModalRecordId ? { ...r, status: 'rejected' as ApprovalStatus } : r))
+      );
+      setMessage({ type: 'success', text: 'Record rejected' });
+      setRejectModalRecordId(null);
+      setRejectReason('');
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to reject' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async (recordId: number) => {
+    if (!season) return;
+    if (!window.confirm('Delete this farmers record? This cannot be undone.')) return;
+    setActionLoading(recordId);
+    setMessage(null);
+    try {
+      await farmersAPI.delete(season.id, recordId);
+      setRecords((prev) => prev.filter((r) => r.id !== recordId));
+      setMessage({ type: 'success', text: 'Record deleted' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to delete' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ─── Helpers ───────────────────────────────────────
+  const getDistrictName = (r: DistrictFarmers) =>
+    r.district_name || districtMap[r.district_id] || `District #${r.district_id}`;
+
+  // ─── Render ────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-        <span className="ml-3 text-gray-500">Loading farmers data...</span>
+      <div className="max-w-7xl mx-auto flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
+        <span className="ml-2 text-gray-500">Loading farmers data...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto py-12 text-center">
-        <p className="text-red-600 font-medium">{error}</p>
+      <div className="max-w-7xl mx-auto py-10">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm flex items-center gap-2">
+          <XCircle className="w-4 h-4" />
+          {error}
+        </div>
       </div>
     );
   }
@@ -145,16 +219,64 @@ export const FarmersList: React.FC = () => {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <Users className="w-7 h-7 text-green-600" />
-          District Farmers Data
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <Users className="w-7 h-7 text-green-600" />
+            District Farmers Data
+          </h1>
+          <button
+            onClick={() => navigate('/data-entry/farmers/new')}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-green-500/30 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Farmers Record
+          </button>
+        </div>
         <p className="text-sm text-gray-500 mt-1">
           Procurement &amp; Payment Tracking
           {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
-          {mspRate > 0 && <span className="text-gray-400 ml-2">(MSP: Rs.{mspRate}/Qtl)</span>}
         </p>
       </div>
+
+      {/* Message */}
+      {message && (
+        <div
+          className={`mb-4 flex items-center gap-2 p-3 rounded-lg text-sm ${
+            message.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}
+        >
+          {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+          <span>{message.text}</span>
+        </div>
+      )}
+
+      {/* Summary Bar */}
+      {summaryByDistrict.length > 0 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">Summary by District</h3>
+            <div className="text-sm font-bold text-green-700">
+              Grand Total Payment: {formatAmount(grandTotalPayment)}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {summaryByDistrict.map((s) => (
+              <div
+                key={s.districtName}
+                className="px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-xs"
+              >
+                <span className="font-semibold text-gray-700">{s.districtName}</span>
+                <span className="text-gray-400 mx-1">|</span>
+                <span className="text-green-600 font-medium">{formatAmount(s.totalPayment)}</span>
+                <span className="text-gray-400 mx-1">|</span>
+                <span className="text-gray-500">{s.count} record{s.count !== 1 ? 's' : ''}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -163,7 +285,10 @@ export const FarmersList: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  District Name
+                  #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  District
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   PACS Count
@@ -173,9 +298,6 @@ export const FarmersList: React.FC = () => {
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Qty Procured (Qtl)
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Cost of Procured
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Payment Released
@@ -188,110 +310,148 @@ export const FarmersList: React.FC = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {rows.length === 0 ? (
+            <tbody className="bg-white divide-y divide-gray-100">
+              {records.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
-                    No districts found.
+                    No farmers records found. Click "Add New Farmers Record" to create one.
                   </td>
                 </tr>
               ) : (
-                rows.map(({ district, record, pacsCount, farmersCount, qty, cost, paymentReleased, status }) => {
-                  const badge = STATUS_BADGE[status] || STATUS_BADGE.pending;
+                records.map((record, idx) => {
+                  const recordId = record.id!;
+                  const status = record.status || 'draft';
+                  const pacsCount = num(record.pacs_count);
+                  const farmersCount = num(record.farmers_count);
+                  const qty = num(record.quantity_procured_qtl);
+                  const paymentReleased = num(record.payment_released_to_farmers_rs);
+                  const isActionLoading = actionLoading === recordId;
 
                   return (
-                    <tr key={district.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {district.name}
+                    <tr key={recordId} className="hover:bg-gray-50 transition-colors">
+                      {/* # */}
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {idx + 1}
                       </td>
+
+                      {/* District */}
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        {getDistrictName(record)}
+                      </td>
+
+                      {/* PACS Count */}
                       <td className="px-4 py-3 text-sm text-gray-700 text-right">
                         {pacsCount > 0 ? pacsCount.toLocaleString('en-IN') : '-'}
                       </td>
+
+                      {/* Farmers Count */}
                       <td className="px-4 py-3 text-sm text-gray-700 text-right">
                         {farmersCount > 0 ? farmersCount.toLocaleString('en-IN') : '-'}
                       </td>
+
+                      {/* Qty Procured */}
                       <td className="px-4 py-3 text-sm text-gray-700 text-right">
                         {qty > 0 ? qty.toLocaleString('en-IN', { maximumFractionDigits: 3 }) : '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                        {cost > 0 ? formatAmount(cost) : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700 text-right">
+
+                      {/* Payment Released */}
+                      <td className="px-4 py-3 text-sm text-gray-700 text-right font-medium">
                         {paymentReleased > 0 ? formatAmount(paymentReleased) : '-'}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge.cls}`}>
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* No data yet — Add */}
-                          {status === 'pending' && (
-                            <button
-                              onClick={() => navigate(`/data-entry/farmers/${district.id}`)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                              title="Add Data"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              Add
-                            </button>
-                          )}
 
-                          {/* Draft or Rejected — Edit */}
+                      {/* Status */}
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge status={status} />
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {/* View — always available */}
+                          <button
+                            onClick={() => navigate(`/data-entry/farmers/${recordId}`)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                            title="View"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View
+                          </button>
+
+                          {/* Edit — draft or rejected */}
                           {(status === 'draft' || status === 'rejected') && (
                             <button
-                              onClick={() => navigate(`/data-entry/farmers/${district.id}`)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                              title="Edit Data"
+                              onClick={() => navigate(`/data-entry/farmers/${recordId}`)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                              title="Edit"
                             >
-                              <Pencil className="w-3.5 h-3.5" />
+                              <Edit2 className="w-3 h-3" />
                               Edit
                             </button>
                           )}
 
-                          {/* Submitted — View + Approve/Reject for approvers */}
-                          {status === 'submitted' && (
-                            <>
-                              <button
-                                onClick={() => navigate(`/data-entry/farmers/${district.id}`)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
-                                title="View Data"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                View
-                              </button>
-                              {canApprove && (
-                                <>
-                                  <button
-                                    onClick={() => handleApprove(district.id)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                                    title="Approve"
-                                  >
-                                    <ShieldCheck className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleReject(district.id)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
-                                    title="Reject"
-                                  >
-                                    <XCircle className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
+                          {/* Delete — draft only */}
+                          {status === 'draft' && (
+                            <button
+                              onClick={() => handleDelete(recordId)}
+                              disabled={isActionLoading}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50"
+                              title="Delete"
+                            >
+                              {isActionLoading ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
                               )}
-                            </>
+                              Delete
+                            </button>
                           )}
 
-                          {/* Approved — View only */}
-                          {status === 'approved' && (
+                          {/* Submit — draft or rejected (DM action) */}
+                          {(status === 'draft' || status === 'rejected') && (
                             <button
-                              onClick={() => navigate(`/data-entry/farmers/${district.id}`)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
-                              title="View Data"
+                              onClick={() => handleSubmit(recordId)}
+                              disabled={isActionLoading}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                              title="Submit for Review"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              View
+                              {isActionLoading ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Send className="w-3 h-3" />
+                              )}
+                              Submit
                             </button>
+                          )}
+
+                          {/* Approve / Reject — submitted, approver roles only */}
+                          {status === 'submitted' && canApprove && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(recordId)}
+                                disabled={isActionLoading}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                                title="Approve"
+                              >
+                                {isActionLoading ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="w-3 h-3" />
+                                )}
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setRejectModalRecordId(recordId);
+                                  setRejectReason('');
+                                }}
+                                disabled={isActionLoading}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                                title="Reject"
+                              >
+                                <XCircle className="w-3 h-3" />
+                                Reject
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -303,6 +463,50 @@ export const FarmersList: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Reject Modal */}
+      {rejectModalRecordId !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Reject Farmers Record</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Provide a reason for rejecting this farmers record
+              {(() => {
+                const rec = records.find((r) => r.id === rejectModalRecordId);
+                return rec ? ` for ${getDistrictName(rec)}` : '';
+              })()}.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setRejectModalRecordId(null);
+                  setRejectReason('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={!rejectReason.trim() || actionLoading === rejectModalRecordId}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {actionLoading === rejectModalRecordId ? (
+                  <Loader2 className="w-4 h-4 animate-spin inline mr-1" />
+                ) : null}
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -73,7 +73,8 @@ function App() {
               <Route path="utilization/new" element={<UtilizationForm />} />
               <Route path="utilization/:id" element={<UtilizationForm />} />
               <Route path="farmers" element={<FarmersList />} />
-              <Route path="farmers/:districtId" element={<FarmersForm />} />
+              <Route path="farmers/new" element={<FarmersForm />} />
+              <Route path="farmers/:id" element={<FarmersForm />} />
             </Route>
 
             {/* ==================== REPORTS ==================== */}

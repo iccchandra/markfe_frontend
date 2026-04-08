@@ -108,7 +108,7 @@ export const ApprovalQueue: React.FC = () => {
       if (rec.module === 'utilization') {
         await utilizationAPI.approve(season.id, rec.id);
       } else {
-        await farmersAPI.approve(season.id, rec.district_id);
+        await farmersAPI.approve(season.id, rec.id);
       }
       await loadRecords(season.id);
       setMessage({ type: 'success', text: `${rec.module === 'utilization' ? 'Utilization' : 'Farmers'} approved for ${rec.district_name}` });
@@ -126,7 +126,7 @@ export const ApprovalQueue: React.FC = () => {
       if (rejectModal.module === 'utilization') {
         await utilizationAPI.reject(season.id, rejectModal.id, rejectReason);
       } else {
-        await farmersAPI.reject(season.id, rejectModal.district_id, rejectReason);
+        await farmersAPI.reject(season.id, rejectModal.id, rejectReason);
       }
       await loadRecords(season.id);
       setRejectModal(null);
@@ -140,7 +140,7 @@ export const ApprovalQueue: React.FC = () => {
     if (rec.module === 'utilization') {
       navigate(`/data-entry/utilization/${rec.id}`);
     } else {
-      navigate(`/data-entry/farmers/${rec.district_id}`);
+      navigate(`/data-entry/farmers/${rec.id}`);
     }
   };
 

@@ -130,16 +130,22 @@ export const utilizationAPI = {
 export const farmersAPI = {
   listAll: (seasonId: number) =>
     apiClient.get<DistrictFarmers[]>(`/farmers/${seasonId}`),
-  get: (seasonId: number, districtId: number) =>
-    apiClient.get<DistrictFarmers>(`/farmers/${seasonId}/${districtId}`),
-  upsert: (seasonId: number, districtId: number, data: Partial<DistrictFarmers>) =>
-    apiClient.put<DistrictFarmers>(`/farmers/${seasonId}/${districtId}`, data),
-  submit: (seasonId: number, districtId: number) =>
-    apiClient.post(`/farmers/${seasonId}/${districtId}/submit`),
-  approve: (seasonId: number, districtId: number) =>
-    apiClient.post(`/farmers/${seasonId}/${districtId}/approve`),
-  reject: (seasonId: number, districtId: number, reason: string) =>
-    apiClient.post(`/farmers/${seasonId}/${districtId}/reject`, { reason }),
+  listByDistrict: (seasonId: number, districtId: number) =>
+    apiClient.get<DistrictFarmers[]>(`/farmers/${seasonId}/district/${districtId}`),
+  get: (seasonId: number, id: number) =>
+    apiClient.get<DistrictFarmers>(`/farmers/${seasonId}/record/${id}`),
+  create: (seasonId: number, data: any) =>
+    apiClient.post<DistrictFarmers>(`/farmers/${seasonId}`, data),
+  update: (seasonId: number, id: number, data: any) =>
+    apiClient.patch<DistrictFarmers>(`/farmers/${seasonId}/${id}`, data),
+  delete: (seasonId: number, id: number) =>
+    apiClient.delete(`/farmers/${seasonId}/${id}`),
+  submit: (seasonId: number, id: number) =>
+    apiClient.post(`/farmers/${seasonId}/${id}/submit`),
+  approve: (seasonId: number, id: number) =>
+    apiClient.post(`/farmers/${seasonId}/${id}/approve`),
+  reject: (seasonId: number, id: number, reason: string) =>
+    apiClient.post(`/farmers/${seasonId}/${id}/reject`, { reason }),
 };
 
 // ─── Dashboard ────────────────────────────────────
