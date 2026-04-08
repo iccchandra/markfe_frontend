@@ -299,6 +299,12 @@ export const LoanSanctionForm: React.FC = () => {
             {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
           </p>
         </div>
+        {canEdit && (
+          <button onClick={handleAddRow}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-blue-500/30">
+            <Plus className="w-4 h-4" /> Add Loan Entry
+          </button>
+        )}
       </div>
 
       {/* Summary Bar */}
@@ -606,17 +612,9 @@ export const LoanSanctionForm: React.FC = () => {
         </table>
       </div>
 
-      {/* Add Button */}
+      {/* Bottom spacing */}
       {canEdit && (
-        <div className="mt-4">
-          <button
-            onClick={handleAddRow}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-blue-500/30"
-          >
-            <Plus className="w-4 h-4" />
-            Add Loan Entry
-          </button>
-        </div>
+        <div className="mt-4"></div>
       )}
     </div>
   );
