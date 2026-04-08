@@ -73,7 +73,8 @@ export const MDSheetView: React.FC = () => {
           }
         }
 
-        const drawdowns: DistrictDrawdown[] = ddRes.status === 'fulfilled' ? ddRes.value.data : [];
+        const ddRaw = ddRes.status === 'fulfilled' ? ddRes.value.data : [];
+        const drawdowns: DistrictDrawdown[] = Array.isArray(ddRaw) ? ddRaw : (ddRaw as any)?.data || [];
         const utilizations: DistrictUtilization[] = utilRes.status === 'fulfilled'
           ? (Array.isArray(utilRes.value.data) ? utilRes.value.data : (utilRes.value.data as any)?.data || [])
           : [];

@@ -46,8 +46,10 @@ export const FarmersSheetView: React.FC = () => {
           drawdownsAPI.list(activeSeason.id),
         ]);
 
-        const farmers: DistrictFarmers[] = farmersRes.status === 'fulfilled' ? farmersRes.value.data : [];
-        const drawdowns: DistrictDrawdown[] = ddRes.status === 'fulfilled' ? ddRes.value.data : [];
+        const farmersRaw = farmersRes.status === 'fulfilled' ? farmersRes.value.data : [];
+        const farmers: DistrictFarmers[] = Array.isArray(farmersRaw) ? farmersRaw : (farmersRaw as any)?.data || [];
+        const ddRaw = ddRes.status === 'fulfilled' ? ddRes.value.data : [];
+        const drawdowns: DistrictDrawdown[] = Array.isArray(ddRaw) ? ddRaw : (ddRaw as any)?.data || [];
 
         // Sum drawdowns by district
         const drawdownByDistrict = new Map<number, number>();

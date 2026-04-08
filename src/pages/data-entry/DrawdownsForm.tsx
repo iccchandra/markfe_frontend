@@ -61,8 +61,9 @@ export const DrawdownsForm: React.FC = () => {
         } catch { /* no loan records yet */ }
 
         try {
-          const { data } = await drawdownsAPI.list(seasonRes.data.id);
-          setRows(data.map((r: any) => ({
+          const { data: ddData } = await drawdownsAPI.list(seasonRes.data.id);
+          const ddList = Array.isArray(ddData) ? ddData : (ddData as any)?.data || [];
+          setRows(ddList.map((r: any) => ({
             ...r,
             amount_withdrawn_rs: num(r.amount_withdrawn_rs),
             isEditing: false,
