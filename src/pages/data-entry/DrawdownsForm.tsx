@@ -109,6 +109,10 @@ export const DrawdownsForm: React.FC = () => {
   };
 
   const handleFieldChange = (index: number, field: keyof DistrictDrawdown, value: any) => {
+    if (field !== 'district_id' && !rows[index].district_id) {
+      setMessage({ type: 'error', text: 'Please select a district first' });
+      return;
+    }
     const updated = [...rows];
     (updated[index] as any)[field] = value;
     setRows(updated);
