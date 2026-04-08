@@ -27,6 +27,7 @@ interface EditableRow extends LoanSanction {
 
 const emptyRow = (seasonId: number): EditableRow => ({
   season_id: seasonId,
+  source_type: 'bank',
   go_reference: '',
   bank_name: '',
   bank_id: undefined,
@@ -90,6 +91,8 @@ export const LoanSanctionForm: React.FC = () => {
   const totalSanctioned = rows.reduce((sum, r) => sum + (r.total_sanctioned_cr || 0), 0);
   const totalDrawn = rows.reduce((sum, r) => sum + (r.total_drawn_cr || 0), 0);
   const balanceAvailable = totalSanctioned - totalDrawn;
+  const bankSanctioned = rows.filter(r => (r.source_type || 'bank') === 'bank').reduce((sum, r) => sum + (r.total_sanctioned_cr || 0), 0);
+  const otherSanctioned = rows.filter(r => r.source_type === 'other').reduce((sum, r) => sum + (r.total_sanctioned_cr || 0), 0);
 
   // ─── Row handlers ──────────────────────────────
   const handleAddRow = () => {
@@ -143,8 +146,9 @@ export const LoanSanctionForm: React.FC = () => {
 
   const validateRow = (row: EditableRow): string | null => {
     if (!row.go_reference.trim()) return 'GO Reference is required';
-    if (!row.bank_id && !row.bank_name.trim()) return 'Bank is required';
-    if (!row.bank_account_no.trim()) return 'Account No is required';
+    const isBank = (row.source_type || 'bank') === 'bank';
+    if (isBank && !row.bank_id && !row.bank_name.trim()) return 'Bank is required';
+    if (isBank && !row.bank_account_no.trim()) return 'Account No is required';
     if (!row.sanction_date) return 'Sanction Date is required';
     if (row.total_sanctioned_cr <= 0) return 'Sanctioned amount must be > 0';
     if (row.total_drawn_cr > row.total_sanctioned_cr) return 'Drawn amount cannot exceed sanctioned amount';
@@ -164,6 +168,7 @@ export const LoanSanctionForm: React.FC = () => {
 
     const payload: Partial<LoanSanction> = {
       season_id: season.id,
+      source_type: row.source_type || 'bank',
       go_reference: row.go_reference,
       bank_name: row.bank_name,
       bank_id: row.bank_id,
@@ -322,6 +327,12 @@ export const LoanSanctionForm: React.FC = () => {
           <div>
             <p className="text-xs text-gray-500">Total Sanctioned</p>
             <p className="text-lg font-bold text-blue-600">{formatAmount((totalSanctioned) * 10000000)}</p>
+            {(bankSanctioned > 0 || otherSanctioned > 0) && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                Bank: {formatAmount(bankSanctioned * 10000000)}
+                {otherSanctioned > 0 && <> | Other: {formatAmount(otherSanctioned * 10000000)}</>}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs text-gray-500">Total Drawn</p>
@@ -355,6 +366,7 @@ export const LoanSanctionForm: React.FC = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="px-3 py-3 text-center font-semibold text-gray-600">Source</th>
               <th className="px-3 py-3 text-left font-semibold text-gray-600">GO Reference</th>
               <th className="px-3 py-3 text-left font-semibold text-gray-600">Bank</th>
               <th className="px-3 py-3 text-left font-semibold text-gray-600">Account No</th>
@@ -376,6 +388,28 @@ export const LoanSanctionForm: React.FC = () => {
 
               return (
                 <tr key={row.id || `new-${index}`} className="border-b border-gray-100 hover:bg-gray-50">
+                  {/* Source Type */}
+                  <td className="px-3 py-3 text-center">
+                    {row.isEditing ? (
+                      <select
+                        value={row.source_type || 'bank'}
+                        onChange={(e) => handleFieldChange(index, 'source_type', e.target.value as 'bank' | 'other')}
+                        className="px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="bank">Bank</option>
+                        <option value="other">Other</option>
+                      </select>
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        (row.source_type || 'bank') === 'bank'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {(row.source_type || 'bank') === 'bank' ? 'Bank' : 'Other'}
+                      </span>
+                    )}
+                  </td>
+
                   {/* GO Reference */}
                   <td className="px-3 py-3">
                     {row.isEditing ? (
@@ -602,7 +636,7 @@ export const LoanSanctionForm: React.FC = () => {
 
             {rows.length === 0 && (
               <tr>
-                <td colSpan={(canEdit || canApprove) ? 10 : 9} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={(canEdit || canApprove) ? 11 : 10} className="px-4 py-8 text-center text-gray-400">
                   No loan sanction entries yet. Click "+ Add Loan Entry" to begin.
                 </td>
               </tr>
@@ -611,7 +645,7 @@ export const LoanSanctionForm: React.FC = () => {
             {/* Totals row */}
             {rows.length > 0 && (
               <tr className="bg-blue-50 font-semibold">
-                <td className="px-3 py-3 text-right" colSpan={4}>TOTAL</td>
+                <td className="px-3 py-3 text-right" colSpan={5}>TOTAL</td>
                 <td className="px-3 py-3 text-right font-mono">{formatAmount((totalSanctioned) * 10000000)}</td>
                 <td className="px-3 py-3 text-right font-mono">{formatAmount((totalDrawn) * 10000000)}</td>
                 <td colSpan={(canEdit || canApprove) ? 4 : 3}></td>

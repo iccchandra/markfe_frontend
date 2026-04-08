@@ -77,6 +77,7 @@ export interface Season {
 export interface LoanSanction {
   id?: number;
   season_id: number;
+  source_type?: 'bank' | 'other';
   go_reference: string;
   bank_name: string;
   bank_id?: number;
