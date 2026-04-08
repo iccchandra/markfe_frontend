@@ -54,12 +54,14 @@ export const LoanSanctionForm: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [{ data: activeSeason }, { data: bankList }] = await Promise.all([
+        const [seasonRes, banksRes] = await Promise.all([
           seasonsAPI.active(),
           banksAPI.list({ is_active: true }),
         ]);
+        const activeSeason = seasonRes.data;
         setSeason(activeSeason);
-        setBanks(bankList);
+        const bankData = banksRes.data;
+        setBanks(Array.isArray(bankData) ? bankData : (bankData as any)?.data || []);
 
         try {
           const { data: existing } = await loanSanctionAPI.get(activeSeason.id);
