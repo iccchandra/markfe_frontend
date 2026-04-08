@@ -43,6 +43,7 @@ export const FarmersList: React.FC = () => {
   const [districts, setDistricts] = useState<District[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Action state
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -236,6 +237,14 @@ export const FarmersList: React.FC = () => {
           Procurement &amp; Payment Tracking
           {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
         </p>
+        <div className="flex gap-1 mt-2">
+          {['all', 'draft', 'submitted', 'approved', 'rejected'].map(f => (
+            <button key={f} onClick={() => setStatusFilter(f)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium ${statusFilter === f ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Message */}
@@ -318,7 +327,7 @@ export const FarmersList: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                records.map((record, idx) => {
+                records.filter(r => statusFilter === 'all' || (r.status || 'draft') === statusFilter).map((record, idx) => {
                   const recordId = record.id!;
                   const status = record.status || 'draft';
                   const pacsCount = num(record.pacs_count);

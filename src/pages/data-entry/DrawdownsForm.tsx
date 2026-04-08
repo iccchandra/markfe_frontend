@@ -35,6 +35,7 @@ export const DrawdownsForm: React.FC = () => {
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     const load = async () => {
@@ -277,6 +278,14 @@ export const DrawdownsForm: React.FC = () => {
             Per-district fund transfers
             {season && <span className="text-blue-600 font-medium"> | {season.season_name}</span>}
           </p>
+          <div className="flex gap-1 mt-2">
+            {['all', 'draft', 'submitted', 'approved', 'rejected'].map(f => (
+              <button key={f} onClick={() => setStatusFilter(f)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium ${statusFilter === f ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -347,7 +356,7 @@ export const DrawdownsForm: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
+            {rows.filter(r => r.isNew || statusFilter === 'all' || (((r as any).status || 'draft') === statusFilter)).map((row, index) => (
               <tr key={row.id || `new-${index}`} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-3">
                   {row.isEditing ? (
