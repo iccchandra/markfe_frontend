@@ -267,7 +267,9 @@ export const FarmersSheetView: React.FC = () => {
                 <td className="px-3 py-2 text-right border-r">{numCell(totals.amount_received_from_ho)}</td>
                 <td className="px-3 py-2 text-right border-r">{numCell(totals.payment_released_to_farmers_rs)}</td>
                 <td className="px-3 py-2 text-right border-r">{numCell(totals.balance_to_farmers)}</td>
-                <td className="px-3 py-2 text-right border-r">{numCell(totals.balance_from_hod)}</td>
+                <td className={`px-3 py-2 text-right border-r ${totals.balance_from_hod > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {numCell(Math.abs(totals.balance_from_hod))} {totals.balance_from_hod > 0 ? '(Due)' : totals.balance_from_hod < 0 ? '(Surplus)' : ''}
+                </td>
                 <td className="px-3 py-2 border-r"></td>
                 <td className="px-3 py-2"></td>
               </tr>
