@@ -164,55 +164,93 @@ export const MarkfedDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Landmark className="w-5 h-5 text-blue-600" />
+      {/* Summary Cards — DM sees district-level, others see global */}
+      {user?.role === UserRole.DM ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Landmark className="w-5 h-5 text-blue-600" />
+              </div>
             </div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Funds Received</p>
+            <p className="text-2xl font-bold text-blue-600 mt-1">{formatAmount(districtTotals.amount_received_rs)}</p>
+            <p className="text-xs text-gray-400 mt-1">From HOD to your district</p>
           </div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Total Sanctioned</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatAmount((summary?.total_sanctioned_cr || 0) * 10000000)}</p>
-          <p className="text-xs text-gray-400 mt-1">As per G.O No. {season?.go_number}</p>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-green-600" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <PieChart className="w-5 h-5 text-purple-600" />
+              </div>
             </div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Utilised</p>
+            <p className="text-2xl font-bold text-purple-600 mt-1">{formatAmount(districtTotals.total_utilised_rs)}</p>
           </div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Total Drawn by HOD</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{formatAmount((summary?.total_drawn_cr || 0) * 10000000)}</p>
-          <p className="text-xs text-gray-400 mt-1">
-            {summary ? `${((summary.total_drawn_cr / summary.total_sanctioned_cr) * 100).toFixed(1)}% of sanctioned` : ''}
-          </p>
-        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <PieChart className="w-5 h-5 text-purple-600" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-orange-600" />
+              </div>
             </div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Balance</p>
+            <p className={`text-2xl font-bold mt-1 ${districtTotals.balance_rs < 0 ? 'text-red-600' : 'text-orange-600'}`}>
+              {formatAmount(districtTotals.balance_rs)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Received - Utilised</p>
           </div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Total Utilised</p>
-          <p className="text-2xl font-bold text-purple-600 mt-1">{formatAmount(summary?.total_utilised_rs || 0)}</p>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Landmark className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Sanctioned</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{formatAmount((summary?.total_sanctioned_cr || 0) * 10000000)}</p>
+            <p className="text-xs text-gray-400 mt-1">As per G.O No. {season?.go_number}</p>
+          </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-orange-600" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+              </div>
             </div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Drawn by HOD</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">{formatAmount((summary?.total_drawn_cr || 0) * 10000000)}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {summary && summary.total_sanctioned_cr > 0 ? `${((summary.total_drawn_cr / summary.total_sanctioned_cr) * 100).toFixed(1)}% of sanctioned` : ''}
+            </p>
           </div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Balance</p>
-          <p className={`text-2xl font-bold mt-1 ${(summary?.total_balance_rs || 0) < 0 ? 'text-red-600' : 'text-orange-600'}`}>
-            {formatAmount(summary?.total_balance_rs || 0)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">Drawn - Utilised</p>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <PieChart className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Utilised</p>
+            <p className="text-2xl font-bold text-purple-600 mt-1">{formatAmount(summary?.total_utilised_rs || 0)}</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-orange-600" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Balance</p>
+            <p className={`text-2xl font-bold mt-1 ${(summary?.total_balance_rs || 0) < 0 ? 'text-red-600' : 'text-orange-600'}`}>
+              {formatAmount(summary?.total_balance_rs || 0)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Drawn - Utilised</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Quick Actions */}
       <div className="mb-6 flex flex-wrap gap-3">
