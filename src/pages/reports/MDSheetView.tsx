@@ -87,9 +87,8 @@ export const MDSheetView: React.FC = () => {
 
           // Build values from dynamic entries or legacy fields
           const utilValues: Record<number, number> = {};
-          const dynEntries = (util as any)?.dynamic_entries || util?.entries || [];
-          if (dynEntries.length > 0) {
-            dynEntries.forEach((e: any) => {
+          if (util?.entries && util.entries.length > 0) {
+            util.entries.forEach((e: any) => {
               utilValues[e.utilization_head_id] = num(e.amount_rs);
             });
           } else if (util) {
