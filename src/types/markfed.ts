@@ -246,7 +246,7 @@ export function formatCrores(amount: number): string {
 
 // Smart formatter: shows in Cr if >= 1 Cr, Lakhs if >= 1 Lakh, else Rs
 export function formatAmount(amountRs: number): string {
-  if (amountRs === 0) return '0';
+  if (amountRs === 0) return '0 Cr';
   const isNegative = amountRs < 0;
   const abs = Math.abs(amountRs);
   let formatted: string;

@@ -318,7 +318,7 @@ export const DrawdownsForm: React.FC = () => {
                 District
               </th>
               <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                Amount Withdrawn (Cr)
+                Amount Withdrawn (Rs)
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-600">
                 Withdrawn Date
