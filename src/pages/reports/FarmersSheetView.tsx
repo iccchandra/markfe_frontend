@@ -122,7 +122,11 @@ export const FarmersSheetView: React.FC = () => {
         // Sort by district name
         farmersRows.sort((a, b) => a.district_name.localeCompare(b.district_name));
 
-        setRows(farmersRows);
+        // DM sees only their district
+        const filtered = user?.role === UserRole.DM && user.district_id
+          ? farmersRows.filter(r => r.district_id === user.district_id)
+          : farmersRows;
+        setRows(filtered);
       } catch {
         // error
       } finally {

@@ -117,7 +117,11 @@ export const MDSheetView: React.FC = () => {
           };
         });
 
-        setRows(mdRows);
+        // DM sees only their district
+        const filtered = user?.role === UserRole.DM && user.district_id
+          ? mdRows.filter(r => r.district_id === user.district_id)
+          : mdRows;
+        setRows(filtered);
       } catch {
         // Error loading
       } finally {
