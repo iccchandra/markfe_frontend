@@ -44,6 +44,7 @@ export const UtilizationForm: React.FC = () => {
   const [selectedDistrictId, setSelectedDistrictId] = useState<number>(0);
   const [heads, setHeads] = useState<UtilizationHead[]>([]);
   const [drawdowns, setDrawdowns] = useState<DistrictDrawdown[]>([]);
+  const [districtStatuses, setDistrictStatuses] = useState<Record<number, ApprovalStatus>>({});
 
   // Form
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -79,6 +80,15 @@ export const UtilizationForm: React.FC = () => {
         if (user?.role === UserRole.DM && user.district_id) {
           setSelectedDistrictId(user.district_id);
         }
+
+        // Load all utilization records to show district statuses
+        try {
+          const utilAllRes = await utilizationAPI.listAll(seasonRes.data.id);
+          const utilAll = Array.isArray(utilAllRes.data) ? utilAllRes.data : (utilAllRes.data as any)?.data || [];
+          const statusMap: Record<number, ApprovalStatus> = {};
+          utilAll.forEach((u: any) => { statusMap[u.district_id] = u.status || 'draft'; });
+          setDistrictStatuses(statusMap);
+        } catch { /* no data yet */ }
       } catch {
         setMessage({ type: 'error', text: 'Failed to load initial data' });
       } finally {
@@ -229,25 +239,39 @@ export const UtilizationForm: React.FC = () => {
         </p>
       </div>
 
-      {/* District Selector (SUPER_ADMIN) or Display (DM) */}
+      {/* District Overview + Selector */}
       {user?.role === UserRole.SUPER_ADMIN ? (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Select District</label>
-          <select
-            value={selectedDistrictId || ''}
-            onChange={(e) => setSelectedDistrictId(parseInt(e.target.value))}
-            className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">-- Choose District --</option>
-            {districts.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select District</label>
+          <div className="flex flex-wrap gap-2">
+            {districts.map((d) => {
+              const ds = districtStatuses[d.id];
+              const isSelected = selectedDistrictId === d.id;
+              const statusColor = !ds ? 'bg-gray-100 text-gray-600 border-gray-200'
+                : ds === 'approved' ? 'bg-green-50 text-green-700 border-green-300'
+                : ds === 'submitted' ? 'bg-blue-50 text-blue-700 border-blue-300'
+                : ds === 'rejected' ? 'bg-red-50 text-red-700 border-red-300'
+                : 'bg-yellow-50 text-yellow-700 border-yellow-300';
+              return (
+                <button key={d.id} onClick={() => setSelectedDistrictId(d.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${statusColor} ${isSelected ? 'ring-2 ring-blue-500 shadow-md' : 'hover:shadow'}`}>
+                  {d.name}
+                  {ds && <span className="ml-1 opacity-70">({ds === 'approved' ? 'A' : ds === 'submitted' ? 'S' : ds === 'rejected' ? 'R' : 'D'})</span>}
+                  {!ds && <span className="ml-1 opacity-50">(new)</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : (
         selectedDistrictId > 0 && (
-          <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-block">
+          <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
             <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
+            {districtStatuses[selectedDistrictId] && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_CONFIG[districtStatuses[selectedDistrictId]].bg} ${STATUS_CONFIG[districtStatuses[selectedDistrictId]].text}`}>
+                {STATUS_CONFIG[districtStatuses[selectedDistrictId]].label}
+              </span>
+            )}
           </div>
         )
       )}
@@ -273,7 +297,7 @@ export const UtilizationForm: React.FC = () => {
           {isLocked && (
             <div className="mb-4 flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
               <AlertCircle className="w-4 h-4" />
-              This record has been {status} and cannot be edited.
+              This record has been {status}. Data shown below is read-only.
             </div>
           )}
 

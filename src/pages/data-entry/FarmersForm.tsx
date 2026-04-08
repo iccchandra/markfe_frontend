@@ -39,6 +39,7 @@ export const FarmersForm: React.FC = () => {
   const [selectedDistrictId, setSelectedDistrictId] = useState<number>(0);
   const [form, setForm] = useState<DistrictFarmers>(emptyFarmers);
   const [drawdowns, setDrawdowns] = useState<DistrictDrawdown[]>([]);
+  const [districtStatuses, setDistrictStatuses] = useState<Record<number, ApprovalStatus>>({});
   const [status, setStatus] = useState<ApprovalStatus>('draft');
   const [rejectionReason, setRejectionReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -57,6 +58,15 @@ export const FarmersForm: React.FC = () => {
         if (user?.role === UserRole.DM && user.district_id) {
           setSelectedDistrictId(user.district_id);
         }
+
+        // Load all farmers records for district status overview
+        try {
+          const farmAllRes = await farmersAPI.listAll(seasonRes.data.id);
+          const farmAll = Array.isArray(farmAllRes.data) ? farmAllRes.data : (farmAllRes.data as any)?.data || [];
+          const statusMap: Record<number, ApprovalStatus> = {};
+          farmAll.forEach((f: any) => { statusMap[f.district_id] = f.status || 'draft'; });
+          setDistrictStatuses(statusMap);
+        } catch { /* no data yet */ }
       } catch {
         setMessage({ type: 'error', text: 'Failed to load data' });
       }
@@ -229,22 +239,36 @@ export const FarmersForm: React.FC = () => {
       {/* District Selector */}
       {user?.role === UserRole.SUPER_ADMIN ? (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Select District</label>
-          <select
-            value={selectedDistrictId || ''}
-            onChange={(e) => setSelectedDistrictId(parseInt(e.target.value))}
-            className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">-- Choose District --</option>
-            {districts.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select District</label>
+          <div className="flex flex-wrap gap-2">
+            {districts.map((d) => {
+              const ds = districtStatuses[d.id];
+              const isSelected = selectedDistrictId === d.id;
+              const statusColor = !ds ? 'bg-gray-100 text-gray-600 border-gray-200'
+                : ds === 'approved' ? 'bg-green-50 text-green-700 border-green-300'
+                : ds === 'submitted' ? 'bg-blue-50 text-blue-700 border-blue-300'
+                : ds === 'rejected' ? 'bg-red-50 text-red-700 border-red-300'
+                : 'bg-yellow-50 text-yellow-700 border-yellow-300';
+              return (
+                <button key={d.id} onClick={() => setSelectedDistrictId(d.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${statusColor} ${isSelected ? 'ring-2 ring-blue-500 shadow-md' : 'hover:shadow'}`}>
+                  {d.name}
+                  {ds && <span className="ml-1 opacity-70">({ds === 'approved' ? 'A' : ds === 'submitted' ? 'S' : ds === 'rejected' ? 'R' : 'D'})</span>}
+                  {!ds && <span className="ml-1 opacity-50">(new)</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : (
         selectedDistrictId > 0 && (
-          <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-block">
+          <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg inline-flex items-center gap-2">
             <span className="text-sm font-semibold text-green-700">District: {districtName}</span>
+            {districtStatuses[selectedDistrictId] && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[districtStatuses[selectedDistrictId]].cls}`}>
+                {STATUS_BADGE[districtStatuses[selectedDistrictId]].label}
+              </span>
+            )}
           </div>
         )
       )}
