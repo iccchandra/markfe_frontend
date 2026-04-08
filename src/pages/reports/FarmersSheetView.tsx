@@ -212,7 +212,17 @@ export const FarmersSheetView: React.FC = () => {
               <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400">No farmers data available.</td></tr>
             )}
             {groups.map((group, groupIdx) => {
-              const groupBg = groupIdx % 2 === 0 ? 'bg-white' : 'bg-blue-50/30';
+              const colors = [
+                'bg-blue-50/40',
+                'bg-amber-50/40',
+                'bg-green-50/40',
+                'bg-purple-50/40',
+                'bg-rose-50/40',
+                'bg-cyan-50/40',
+                'bg-orange-50/40',
+                'bg-teal-50/40',
+              ];
+              const groupBg = colors[groupIdx % colors.length];
               return (
               <React.Fragment key={group.district_id}>
                 {/* Per-PACS rows */}
@@ -239,7 +249,7 @@ export const FarmersSheetView: React.FC = () => {
                 ))}
                 {/* District sub-total (only if more than 1 entity) */}
                 {group.rows.length > 1 && (
-                  <tr className={`font-semibold border-b ${groupIdx % 2 === 0 ? 'bg-green-50/50' : 'bg-blue-50/60'}`}>
+                  <tr className={`font-semibold border-b border-t ${groupBg}`}>
                     <td className="px-3 py-1.5 border-r text-right text-[10px] text-gray-500" colSpan={3}>
                       Sub Total — {group.district_name} ({group.rows.length} entities)
                     </td>
