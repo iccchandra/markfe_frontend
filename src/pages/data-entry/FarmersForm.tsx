@@ -31,7 +31,6 @@ const StatusBadge: React.FC<{ status: ApprovalStatus }> = ({ status }) => {
 const emptyFarmers: DistrictFarmers = {
   season_id: 0,
   district_id: 0,
-  pacs_count: 0,
   pacs_entity_id: null,
   farmers_count: 0,
   quantity_procured_qtl: 0,
@@ -111,7 +110,6 @@ export const FarmersForm: React.FC = () => {
               ...raw,
               season_id: activeSeason.id,
               district_id: raw.district_id,
-              pacs_count: num(raw.pacs_count),
               farmers_count: num(raw.farmers_count),
               quantity_procured_qtl: num(raw.quantity_procured_qtl),
               cost_of_procured_qty_rs: num(raw.cost_of_procured_qty_rs),
@@ -198,13 +196,15 @@ export const FarmersForm: React.FC = () => {
       return;
     }
 
+    // PACS/DCMS/FPO entity is always required
+    if (!form.pacs_entity_id) {
+      setMessage({ type: 'error', text: 'Please select a PACS/DCMS/FPO entity' });
+      return;
+    }
+
     if (submit) {
       if (form.quantity_procured_qtl <= 0) {
         setMessage({ type: 'error', text: 'Quantity procured must be > 0' });
-        return;
-      }
-      if (form.pacs_count < 1) {
-        setMessage({ type: 'error', text: 'PACS count must be at least 1' });
         return;
       }
       if (!window.confirm('Submit farmers data for review?')) return;
@@ -216,7 +216,6 @@ export const FarmersForm: React.FC = () => {
     try {
       const payload = {
         district_id: selectedDistrictId,
-        pacs_count: form.pacs_count,
         pacs_entity_id: form.pacs_entity_id,
         farmers_count: form.farmers_count,
         quantity_procured_qtl: form.quantity_procured_qtl,
@@ -418,39 +417,33 @@ export const FarmersForm: React.FC = () => {
             </div>
           )}
 
-          {/* PACS Count */}
-          <div>
+          {/* PACS/DCMS/FPO Entity (Required) */}
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              No. of PACS/DCMS/FPO
-            </label>
-            <input
-              type="number"
-              value={form.pacs_count || ''}
-              onChange={(e) => handleChange('pacs_count', parseInt(e.target.value) || 0)}
-              disabled={!canEdit}
-              min={1}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
-            />
-          </div>
-
-          {/* PACS Entity */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name of PACS/DCMS/FPO
+              Select PACS/DCMS/FPO Entity <span className="text-red-500">*</span>
             </label>
             <select
               value={form.pacs_entity_id || ''}
               onChange={(e) => handleChange('pacs_entity_id', e.target.value ? parseInt(e.target.value) : null)}
               disabled={!canEdit}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+              required
+              className={`w-full max-w-md px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-500 disabled:bg-gray-50 ${
+                !form.pacs_entity_id && canEdit ? 'border-red-300' : 'border-gray-300'
+              }`}
             >
-              <option value="">Select PACS/DCMS/FPO</option>
+              <option value="">-- Select PACS/DCMS/FPO --</option>
               {pacsEntities.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.type})
                 </option>
               ))}
             </select>
+            {!form.pacs_entity_id && canEdit && (
+              <p className="text-xs text-red-500 mt-1">A PACS/DCMS/FPO entity must be selected</p>
+            )}
+            {pacsEntities.length === 0 && selectedDistrictId > 0 && (
+              <p className="text-xs text-amber-600 mt-1">No PACS/DCMS/FPO entities found for this district</p>
+            )}
           </div>
 
           {/* Farmers Count */}

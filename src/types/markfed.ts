@@ -156,9 +156,10 @@ export interface DistrictFarmers {
   season_id: number;
   district_id: number;
   district_name?: string;
-  pacs_count: number;
+  pacs_count?: number;
   pacs_entity_id: number | null;
   pacs_entity_name?: string;
+  pacs_entity_type?: 'PACS' | 'DCMS' | 'FPO';
   farmers_count: number;
   quantity_procured_qtl: number;
   cost_of_procured_qty_rs: number;
@@ -279,4 +280,8 @@ export function flattenDistrict(row: any): string {
 // Flatten nested pacs_entity
 export function flattenPacs(row: any): string {
   return row?.pacs_entity?.name || row?.pacs_entity_name || '';
+}
+
+export function flattenPacsType(row: any): string {
+  return row?.pacs_entity?.type || row?.pacs_entity_type || '';
 }

@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { seasonsAPI, districtsAPI, farmersAPI } from '../../api/services';
 import type { Season, District, DistrictFarmers } from '../../types/markfed';
-import { UserRole, formatAmount, num, ApprovalStatus } from '../../types/markfed';
+import { UserRole, formatAmount, num, ApprovalStatus, flattenPacs, flattenPacsType } from '../../types/markfed';
 
 // ─── Status Badge ────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -299,8 +299,11 @@ export const FarmersList: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   District
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  PACS Count
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  PACS/DCMS/FPO Name
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Type
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Farmers Count
@@ -322,7 +325,7 @@ export const FarmersList: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-100">
               {records.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
                     No farmers records found. Click "Add New Farmers Record" to create one.
                   </td>
                 </tr>
@@ -330,7 +333,8 @@ export const FarmersList: React.FC = () => {
                 records.filter(r => statusFilter === 'all' || (r.status || 'draft') === statusFilter).map((record, idx) => {
                   const recordId = record.id!;
                   const status = record.status || 'draft';
-                  const pacsCount = num(record.pacs_count);
+                  const pacsName = flattenPacs(record) || '-';
+                  const pacsType = flattenPacsType(record) || '-';
                   const farmersCount = num(record.farmers_count);
                   const qty = num(record.quantity_procured_qtl);
                   const paymentReleased = num(record.payment_released_to_farmers_rs);
@@ -348,9 +352,18 @@ export const FarmersList: React.FC = () => {
                         {getDistrictName(record)}
                       </td>
 
-                      {/* PACS Count */}
-                      <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                        {pacsCount > 0 ? pacsCount.toLocaleString('en-IN') : '-'}
+                      {/* PACS/DCMS/FPO Name */}
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {pacsName}
+                      </td>
+
+                      {/* Type */}
+                      <td className="px-4 py-3 text-sm text-gray-700 text-center">
+                        {pacsType !== '-' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                            {pacsType}
+                          </span>
+                        ) : '-'}
                       </td>
 
                       {/* Farmers Count */}

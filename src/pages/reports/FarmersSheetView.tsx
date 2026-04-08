@@ -7,12 +7,13 @@ import { Download, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { farmersAPI, drawdownsAPI, seasonsAPI, districtsAPI, exportAPI } from '../../api/services';
 import type { DistrictFarmers, Season, District, DistrictDrawdown } from '../../types/markfed';
-import { UserRole, calcCostOfProcuredQty, formatAmount, num, flattenDistrict } from '../../types/markfed';
+import { UserRole, calcCostOfProcuredQty, formatAmount, num, flattenDistrict, flattenPacs } from '../../types/markfed';
 
 interface FarmersRow {
   district_id: number;
   district_name: string;
-  pacs_count: number;
+  pacs_count: number; // now derived from record_count
+  pacs_names: string; // comma-joined entity names
   farmers_count: number;
   quantity_procured_qtl: number;
   cost_of_procured_qty_rs: number; // auto
@@ -60,7 +61,7 @@ export const FarmersSheetView: React.FC = () => {
         // Aggregate multiple farmer records per district
         const districtAgg = new Map<number, {
           district_name: string;
-          pacs_count: number;
+          pacs_names: string[];
           farmers_count: number;
           quantity_procured_qtl: number;
           payment_released_to_farmers_rs: number;
@@ -72,18 +73,19 @@ export const FarmersSheetView: React.FC = () => {
           const did = f.district_id;
           const existing = districtAgg.get(did);
           const dName = flattenDistrict(f) || districtMap.get(did) || `District ${did}`;
+          const pacsName = flattenPacs(f);
 
           if (existing) {
-            existing.pacs_count += num(f.pacs_count);
             existing.farmers_count += num(f.farmers_count);
             existing.quantity_procured_qtl += num(f.quantity_procured_qtl);
             existing.payment_released_to_farmers_rs += num(f.payment_released_to_farmers_rs);
             existing.record_count += 1;
+            if (pacsName) existing.pacs_names.push(pacsName);
             if (f.remarks) existing.remarks.push(f.remarks);
           } else {
             districtAgg.set(did, {
               district_name: dName,
-              pacs_count: num(f.pacs_count),
+              pacs_names: pacsName ? [pacsName] : [],
               farmers_count: num(f.farmers_count),
               quantity_procured_qtl: num(f.quantity_procured_qtl),
               payment_released_to_farmers_rs: num(f.payment_released_to_farmers_rs),
@@ -103,7 +105,8 @@ export const FarmersSheetView: React.FC = () => {
           farmersRows.push({
             district_id: districtId,
             district_name: agg.district_name,
-            pacs_count: agg.pacs_count,
+            pacs_count: agg.record_count,
+            pacs_names: agg.pacs_names.join(', '),
             farmers_count: agg.farmers_count,
             quantity_procured_qtl: qty,
             cost_of_procured_qty_rs: cost,
@@ -205,6 +208,7 @@ export const FarmersSheetView: React.FC = () => {
             <tr className="bg-gray-100 border-b">
               <th className="px-3 py-2 text-left border-r">District</th>
               <th className="px-3 py-2 text-right border-r bg-green-50">PACS Count</th>
+              <th className="px-3 py-2 text-left border-r bg-green-50">PACS/DCMS/FPO Names</th>
               <th className="px-3 py-2 text-right border-r bg-green-50">Farmers</th>
               <th className="px-3 py-2 text-right border-r bg-green-50">Qty (Qtl)</th>
               <th className="px-3 py-2 text-right border-r bg-gray-200">Cost (Auto)</th>
@@ -224,6 +228,7 @@ export const FarmersSheetView: React.FC = () => {
               >
                 <td className="px-3 py-2 font-semibold border-r">{row.district_name}</td>
                 <td className="px-3 py-2 text-right border-r">{row.pacs_count}</td>
+                <td className="px-3 py-2 border-r max-w-[200px] truncate" title={row.pacs_names}>{row.pacs_names || '-'}</td>
                 <td className="px-3 py-2 text-right border-r">{row.farmers_count.toLocaleString('en-IN')}</td>
                 <td className="px-3 py-2 text-right border-r">{row.quantity_procured_qtl.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
                 <td className="px-3 py-2 text-right border-r bg-gray-50">{numCell(row.cost_of_procured_qty_rs)}</td>
@@ -241,7 +246,7 @@ export const FarmersSheetView: React.FC = () => {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={12} className="px-4 py-8 text-center text-gray-400">
                   No farmers data available.
                 </td>
               </tr>
@@ -250,6 +255,7 @@ export const FarmersSheetView: React.FC = () => {
               <tr className="bg-green-50 font-bold border-t-2 border-green-300">
                 <td className="px-3 py-2 border-r">TOTAL</td>
                 <td className="px-3 py-2 text-right border-r">{totals.pacs_count}</td>
+                <td className="px-3 py-2 border-r"></td>
                 <td className="px-3 py-2 text-right border-r">{totals.farmers_count.toLocaleString('en-IN')}</td>
                 <td className="px-3 py-2 text-right border-r">{totals.quantity_procured_qtl.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</td>
                 <td className="px-3 py-2 text-right border-r">{numCell(totals.cost_of_procured_qty_rs)}</td>
