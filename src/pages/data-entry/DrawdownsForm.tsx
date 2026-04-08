@@ -314,6 +314,14 @@ export const DrawdownsForm: React.FC = () => {
         </div>
       )}
 
+      {/* Live Running Total */}
+      {totalWithdrawn > 0 && (
+        <div className="mb-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+          <span className="text-sm font-medium text-blue-700">Running Total</span>
+          <span className="text-lg font-bold text-blue-700">{formatAmount(totalWithdrawn)}</span>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
         <table className="w-full text-sm">

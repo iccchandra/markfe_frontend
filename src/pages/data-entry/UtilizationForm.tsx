@@ -318,6 +318,14 @@ export const UtilizationForm: React.FC = () => {
             </div>
           )}
 
+          {/* Live Running Total */}
+          {heads.length > 0 && totalUtilised > 0 && (
+            <div className="mb-3 px-4 py-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between sticky top-0 z-10">
+              <span className="text-sm font-medium text-green-700">Running Total</span>
+              <span className="text-lg font-bold text-green-700">{formatAmount(totalUtilised)}</span>
+            </div>
+          )}
+
           {/* Utilization Form — dynamic fields */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             {heads.length === 0 ? (
