@@ -94,9 +94,7 @@ export const AdminHeader: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </button>
           
           <div className="flex items-center gap-2">
-            <img src={process.env.PUBLIC_URL + "/telangana-govt.png"} alt="Telangana Govt" className="w-8 h-8 object-contain" />
-            <img src={process.env.PUBLIC_URL + "/markfed-logo.png"} alt="TG MARKFED" className="w-8 h-8 object-contain" />
-            <div className="hidden sm:block ml-1">
+            <div className="hidden sm:block">
               <h1 className="text-base font-bold text-gray-900">TG MARKFED</h1>
               <p className="text-[10px] text-gray-500">Maize MSP Portal</p>
             </div>

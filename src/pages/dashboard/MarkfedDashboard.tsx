@@ -136,11 +136,6 @@ export const MarkfedDashboard: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <img src={process.env.PUBLIC_URL + "/telangana-govt.png"} alt="Telangana Govt" className="w-8 h-8 object-contain" />
-            <img src={process.env.PUBLIC_URL + "/markfed-logo.png"} alt="TG MARKFED" className="w-8 h-8 object-contain" />
-            <img src={process.env.PUBLIC_URL + "/tg-rising.jpeg"} alt="Telangana Rising" className="w-8 h-8 object-contain" />
-          </div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <Wheat className="w-7 h-7 text-green-600" />
             Maize MSP Dashboard
