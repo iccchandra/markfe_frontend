@@ -323,7 +323,7 @@ export const DrawdownsForm: React.FC = () => {
                 District
               </th>
               <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                Amount Withdrawn (Rs)
+                Amount Withdrawn (in Rs)
               </th>
               <th className="px-4 py-3 text-left font-semibold text-gray-600">
                 Withdrawn Date
@@ -364,6 +364,7 @@ export const DrawdownsForm: React.FC = () => {
                       value={row.amount_withdrawn_rs || ''}
                       onChange={(e) => handleFieldChange(index, 'amount_withdrawn_rs', parseFloat(e.target.value) || 0)}
                       min={0}
+                      placeholder="e.g. 25000000 for 2.5 Cr"
                       className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:ring-2 focus:ring-blue-500"
                     />
                   ) : (
