@@ -94,10 +94,6 @@ export const AdminHeader: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </button>
           
           <div className="flex items-center gap-2">
-            <div className="hidden sm:block">
-              <h1 className="text-base font-bold text-gray-900">TG MARKFED</h1>
-              <p className="text-[10px] text-gray-500">Maize MSP Portal</p>
-            </div>
           </div>
 
           {/* Desktop Search */}
