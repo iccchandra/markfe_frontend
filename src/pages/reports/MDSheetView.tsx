@@ -222,24 +222,24 @@ export const MDSheetView: React.FC = () => {
         </div>
       </div>
 
-      {/* Loan Header Info */}
+      {/* Season & Loan Summary */}
       {loan && (
-        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200 grid grid-cols-4 gap-4 text-sm">
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
-            <span className="text-gray-500">GO Ref:</span>
-            <span className="ml-1 font-semibold">{loan.go_reference}</span>
+            <span className="text-gray-500">G.O No:</span>
+            <span className="ml-1 font-semibold">{season?.go_number} Dt. {season?.go_date}</span>
           </div>
           <div>
-            <span className="text-gray-500">Bank:</span>
-            <span className="ml-1 font-semibold">{loan.bank?.name || loan.bank_name}</span>
+            <span className="text-gray-500">MSP Rate:</span>
+            <span className="ml-1 font-semibold">Rs. {season?.msp_rate}/Qtl</span>
           </div>
           <div>
-            <span className="text-gray-500">Sanctioned:</span>
-            <span className="ml-1 font-semibold">{loan.total_sanctioned_cr} Cr</span>
+            <span className="text-gray-500">Total Sanctioned:</span>
+            <span className="ml-1 font-semibold">{formatAmount(loan.total_sanctioned_cr * 10000000)}</span>
           </div>
           <div>
-            <span className="text-gray-500">Drawn:</span>
-            <span className="ml-1 font-semibold">{loan.total_drawn_cr} Cr</span>
+            <span className="text-gray-500">Total Drawn:</span>
+            <span className="ml-1 font-semibold">{formatAmount(loan.total_drawn_cr * 10000000)}</span>
           </div>
         </div>
       )}
