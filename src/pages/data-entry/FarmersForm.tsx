@@ -99,7 +99,7 @@ export const FarmersForm: React.FC = () => {
         if (!isCreateMode && recordId && activeSeason) {
           try {
             const farmersRes = await farmersAPI.get(activeSeason.id, recordId);
-            const raw = farmersRes.value?.data ?? farmersRes.data;
+            const raw = farmersRes.data;
 
             // Set district from loaded record
             setSelectedDistrictId(raw.district_id);
