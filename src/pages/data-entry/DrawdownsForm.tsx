@@ -398,8 +398,8 @@ export const DrawdownsForm: React.FC = () => {
                 </td>
                 <td className="px-4 py-3 text-center">
                   {!row.isNew && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[(row as any).status || 'draft'].cls}`}>
-                      {STATUS_BADGE[(row as any).status || 'draft'].label}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[((row as any).status || 'draft') as ApprovalStatus].cls}`}>
+                      {STATUS_BADGE[((row as any).status || 'draft') as ApprovalStatus].label}
                     </span>
                   )}
                 </td>
