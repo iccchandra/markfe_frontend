@@ -289,7 +289,7 @@ export const UtilizationForm: React.FC = () => {
                 <p className="text-xs text-gray-500">Drawdown Entries</p>
                 <p className="text-sm text-gray-700">
                   {drawdowns.length > 0
-                    ? drawdowns.map((d) => `${formatAmount(d.amount_withdrawn_rs)} (UTR: ${d.utr_no})`).join(', ')
+                    ? `${drawdowns.length} transfer(s)`
                     : 'No drawdowns recorded for this district'}
                 </p>
               </div>
