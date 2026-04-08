@@ -122,18 +122,6 @@ export const AdminHeader: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
         {/* Right Section - Actions */}
         <div className="flex items-center gap-3">
-          {/* Quick Stats (Desktop Only) */}
-          <div className="hidden xl:flex items-center gap-4 mr-4 px-4 border-r border-gray-200">
-            <div className="text-center">
-              <div className="text-xs text-gray-500">Active Trips</div>
-              <div className="text-lg font-bold text-blue-600">24</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xs text-gray-500">Pending ROs</div>
-              <div className="text-lg font-bold text-orange-600">15</div>
-            </div>
-          </div>
-
           {/* Notifications */}
           <div className="relative">
             <button
