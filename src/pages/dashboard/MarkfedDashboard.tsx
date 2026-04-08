@@ -270,6 +270,7 @@ export const MarkfedDashboard: React.FC = () => {
               <th className="px-4 py-3 text-right font-semibold">Storage</th>
               <th className="px-4 py-3 text-right font-semibold bg-gray-100">Total</th>
               <th className="px-4 py-3 text-right font-semibold">Balance</th>
+              <th className="px-4 py-3 text-center font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -291,12 +292,26 @@ export const MarkfedDashboard: React.FC = () => {
                   <td className={`px-4 py-3 text-right font-mono text-xs ${d.balance_rs < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {formatAmount(d.balance_rs)}
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    {(() => {
+                      const s = (d as any).status || 'no_data';
+                      const m: Record<string, { cls: string; label: string }> = {
+                        approved: { cls: 'bg-green-100 text-green-700', label: 'Approved' },
+                        submitted: { cls: 'bg-blue-100 text-blue-700', label: 'Submitted' },
+                        draft: { cls: 'bg-yellow-100 text-yellow-700', label: 'Draft' },
+                        rejected: { cls: 'bg-red-100 text-red-700', label: 'Rejected' },
+                        no_data: { cls: 'bg-gray-100 text-gray-500', label: 'Pending' },
+                      };
+                      const cfg = m[s] || m.no_data;
+                      return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>;
+                    })()}
+                  </td>
                 </tr>
               );
             })}
             {districtRows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
                   No utilization data yet. Districts will appear here as data is entered.
                 </td>
               </tr>
@@ -315,6 +330,7 @@ export const MarkfedDashboard: React.FC = () => {
                 <td className={`px-4 py-3 text-right font-mono text-xs ${districtTotals.balance_rs < 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {formatAmount(districtTotals.balance_rs)}
                 </td>
+                <td></td>
               </tr>
             )}
           </tbody>
