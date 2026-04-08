@@ -7,6 +7,7 @@ interface PayRecordsFilterProps {
   onFilterChange: (filters: FilterParams) => void;
   onSearch: () => void;
   onReset: () => void;
+  disabled?: boolean; // ADD THIS LINE
 }
 
 export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
@@ -14,6 +15,7 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
   onFilterChange,
   onSearch,
   onReset,
+  disabled = false, // ADD THIS LINE
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -49,7 +51,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
                 value={filters.beneficiaryId || ''}
                 onChange={(e) => handleChange('beneficiaryId', e.target.value)}
                 placeholder="Enter ID"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -63,7 +66,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
                 value={filters.name || ''}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="Enter name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -75,7 +79,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
               <select
                 value={filters.stage || ''}
                 onChange={(e) => handleChange('stage', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Stages</option>
                 <option value="BL">BL - Base List</option>
@@ -93,7 +98,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
               <select
                 value={filters.bankPaymentStatus || ''}
                 onChange={(e) => handleChange('bankPaymentStatus', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Status</option>
                 <option value="SUCCESS">Success</option>
@@ -110,7 +116,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
               <select
                 value={filters.pennyDropStatus || ''}
                 onChange={(e) => handleChange('pennyDropStatus', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Status</option>
                 <option value="SUCCESS">Success</option>
@@ -127,7 +134,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
               <select
                 value={filters.payment_with || ''}
                 onChange={(e) => handleChange('payment_with', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Methods</option>
                 <option value="APBS">APBS</option>
@@ -135,24 +143,25 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
               </select>
             </div>
 
-         {/* Min Amount */}
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Min Amount (₹)
-  </label>
-  <select
-    value={filters.minAmount || ''}
-    onChange={(e) => handleChange('minAmount', e.target.value ? parseInt(e.target.value) : '')}
-    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-  >
-    <option value="">All Amounts</option>
-    <option value="10000000">₹1,00,000 - ₹2,00,000</option>
-    <option value="20000000">₹2,00,000 - ₹3,00,000</option>
-    <option value="30000000">₹3,00,000 - ₹4,00,000</option>
-    <option value="40000000">₹4,00,000 - ₹5,00,000</option>
-    <option value="50000000">₹5,00,000 and above</option>
-  </select>
-</div>
+            {/* Min Amount */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Min Amount (₹)
+              </label>
+              <select
+                value={filters.minAmount || ''}
+                onChange={(e) => handleChange('minAmount', e.target.value ? parseInt(e.target.value) : '')}
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">All Amounts</option>
+                <option value="10000000">₹1,00,000 - ₹2,00,000</option>
+                <option value="20000000">₹2,00,000 - ₹3,00,000</option>
+                <option value="30000000">₹3,00,000 - ₹4,00,000</option>
+                <option value="40000000">₹4,00,000 - ₹5,00,000</option>
+                <option value="50000000">₹5,00,000 and above</option>
+              </select>
+            </div>
 
             {/* Max Amount */}
             <div>
@@ -164,7 +173,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
                 value={filters.maxAmount ? filters.maxAmount / 100 : ''}
                 onChange={(e) => handleChange('maxAmount', e.target.value ? parseFloat(e.target.value) * 100 : '')}
                 placeholder="No limit"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -177,7 +187,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
                 type="date"
                 value={filters.startDate || ''}
                 onChange={(e) => handleChange('startDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -190,7 +201,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
                 type="date"
                 value={filters.endDate || ''}
                 onChange={(e) => handleChange('endDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -202,7 +214,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
               <select
                 value={filters.dateField || 'bankProcessedDate'}
                 onChange={(e) => handleChange('dateField', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="bankProcessedDate">Bank Processed Date</option>
                 <option value="uploadDate">Upload Date</option>
@@ -218,7 +231,8 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
               <select
                 value={filters.limit || 50}
                 onChange={(e) => handleChange('limit', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                disabled={disabled} // ADD THIS LINE
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="25">25</option>
                 <option value="50">50</option>
@@ -232,14 +246,16 @@ export const PayRecordsFilter: React.FC<PayRecordsFilterProps> = ({
           <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
             <button
               onClick={onSearch}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              disabled={disabled} // ADD THIS LINE
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Search size={18} />
               Apply Filters
             </button>
             <button
               onClick={onReset}
-              className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+              disabled={disabled} // ADD THIS LINE
+              className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <X size={18} />
               Reset

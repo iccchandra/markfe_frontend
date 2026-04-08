@@ -7,12 +7,17 @@ interface AggregateSummaryProps {
   data: AggregateSummaryResponse | null;
   loading: boolean;
   onPageChange?: (page: number) => void;
+  onLimitChange?: (limit: number) => void; // ADD THIS LINE
+  currentPage?: number; // ADD THIS LINE
+  currentLimit?: number; // ADD THIS LINE
 }
-
 export const AggregateSummary: React.FC<AggregateSummaryProps> = ({ 
   data, 
   loading,
-  onPageChange 
+  onPageChange,
+  onLimitChange, // ADD THIS LINE
+  currentPage, // ADD THIS LINE
+  currentLimit, // ADD THIS LINE
 }) => {
   // FIXED: Move useNavigate inside the component
   const navigate = useNavigate();

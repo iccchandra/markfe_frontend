@@ -1,332 +1,179 @@
-import React, { useState, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../../components/common/Button/Button';
-import { Input } from '../../components/common/Input/Input';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner/LoadingSpinner';
+// ============================================
+// pages/Login/Login.tsx — Real Login Form with Role-Based Redirect
+// ============================================
+import React, { useState } from 'react';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Warehouse, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useAuth, getPostLoginPath } from '../../contexts/AuthContext';
 
-interface LoginFormData {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-}
-
-interface LoginError {
-  message: string;
-  field?: 'email' | 'password' | 'general';
-}
-
-export const Login: React.FC = () => {
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: 'admin@telangana.gov.in',
-    password: 'admin123',
-    rememberMe: false,
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<LoginError | null>(null);
-  const [showDemo, setShowDemo] = useState(true);
-  
-  const { login, isAuthenticated, loading: authLoading } = useAuth();
+export const MarkfedLogin: React.FC = () => {
+  const { isAuthenticated, loading: authLoading, login, user } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the intended destination or default to dashboard
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  // MOVED: Load remembered email on component mount - BEFORE any conditional returns
-  useEffect(() => {
-    const rememberedEmail = localStorage.getItem('remember_user');
-    if (rememberedEmail) {
-      setFormData(prev => ({ 
-        ...prev, 
-        email: rememberedEmail, 
-        rememberMe: true 
-      }));
-    }
-  }, []);
+  const from = (location.state as any)?.from?.pathname;
 
-  // NOW it's safe to have conditional returns after all hooks are called
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    return <Navigate to={from} replace />;
+  // Already authenticated — redirect
+  if (isAuthenticated && user) {
+    const target = from || getPostLoginPath(user.role);
+    return <Navigate to={target} replace />;
   }
 
-  // Show loading spinner during auth check
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const loggedInUser = await login({ email: email.trim(), password });
+      const target = from || getPostLoginPath(loggedInUser.role);
+      navigate(target, { replace: true });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Login failed. Please try again.';
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <LoadingSpinner size="lg" text="Checking authentication..." />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  const validateForm = (): boolean => {
-    if (!formData.email) {
-      setError({ message: 'Email is required', field: 'email' });
-      return false;
-    }
-    
-    if (!formData.email.includes('@')) {
-      setError({ message: 'Please enter a valid email address', field: 'email' });
-      return false;
-    }
-    
-    if (!formData.password) {
-      setError({ message: 'Password is required', field: 'password' });
-      return false;
-    }
-    
-    if (formData.password.length < 6) {
-      setError({ message: 'Password must be at least 6 characters', field: 'password' });
-      return false;
-    }
-    
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      await login({
-        email: formData.email,
-        password: formData.password,
-      });
-      
-      // Remember me functionality
-      if (formData.rememberMe) {
-        localStorage.setItem('remember_user', formData.email);
-      } else {
-        localStorage.removeItem('remember_user');
-      }
-    } catch (err: any) {
-      console.error('Login error:', err);
-      
-      // Handle different types of errors
-      if (err.response?.status === 401) {
-        setError({ 
-          message: 'Invalid email or password. Please try again.', 
-          field: 'general' 
-        });
-      } else if (err.response?.status === 429) {
-        setError({ 
-          message: 'Too many login attempts. Please try again later.', 
-          field: 'general' 
-        });
-      } else if (err.response?.status === 403) {
-        setError({ 
-          message: 'Your account has been suspended. Please contact administrator.', 
-          field: 'general' 
-        });
-      } else if (err.code === 'NETWORK_ERROR') {
-        setError({ 
-          message: 'Network error. Please check your connection and try again.', 
-          field: 'general' 
-        });
-      } else {
-        setError({ 
-          message: err.response?.data?.message || 'Login failed. Please try again.', 
-          field: 'general' 
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateFormData = (field: keyof LoginFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (error && error.field === field) {
-      setError(null);
-    }
-  };
-
-  const fillDemoCredentials = (role: 'admin' | 'editor' | 'viewer') => {
-    const credentials = {
-      admin: { email: 'admin@telangana.gov.in', password: 'admin123' },
-      editor: { email: 'editor@telangana.gov.in', password: 'editor123' },
-      viewer: { email: 'viewer@telangana.gov.in', password: 'viewer123' },
-    };
-    
-    setFormData(prev => ({
-      ...prev,
-      ...credentials[role],
-    }));
-    setError(null);
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="flex justify-center mb-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50 px-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
             <div className="relative">
-              <img
-                className="h-16 w-16 rounded-full shadow-lg"
-                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23e74c3c'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='white' font-size='20' font-weight='bold'%3ETS%3C/text%3E%3C/svg%3E"
-                alt="Telangana Logo"
-              />
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-3 h-3 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/40">
+                <span className="text-white font-bold text-3xl">M</span>
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center border-3 border-white shadow-lg">
+                <Warehouse className="w-4 h-4 text-white" />
               </div>
             </div>
           </div>
-          
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          Indiramma Illu
-          </h2>
-          <p className="text-gray-600 text-sm">
-          Housing for All Initiative
-          </p>
-          <div className="mt-2 flex items-center justify-center">
-            <div className="w-12 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-          </div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            MARKFED Telangana
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">Maize MSP Data Entry Portal</p>
         </div>
 
- 
-
         {/* Login Form */}
-        <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Email Field */}
-            <div className="space-y-1">
-              <Input
-                label="Email Address"
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Sign In</h2>
+          <p className="text-sm text-gray-500 mb-6">Enter your credentials to access the portal</p>
+
+          {error && (
+            <div className="mb-4 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+              <input
                 type="email"
-                value={formData.email}
-                onChange={(e) => updateFormData('email', e.target.value)}
-                leftIcon={<Mail className="w-4 h-4" />}
-                placeholder="Enter your email"
-                error={error?.field === 'email' ? error.message : undefined}
-                required
-                autoComplete="email"
-                disabled={loading}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@markfed.telangana.gov.in"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
+                disabled={submitting}
+                autoFocus
               />
             </div>
 
-            {/* Password Field */}
-            <div className="space-y-1">
-              <Input
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={(e) => updateFormData('password', e.target.value)}
-                leftIcon={<Lock className="w-4 h-4" />}
-                rightIcon={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="focus:outline-none hover:text-gray-600 transition-colors"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                }
-                placeholder="Enter your password"
-                error={error?.field === 'password' ? error.message : undefined}
-                required
-                autoComplete="current-password"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="relative">
                 <input
-                  id="remember-me"
-                  type="checkbox"
-                  checked={formData.rememberMe}
-                  onChange={(e) => updateFormData('rememberMe', e.target.checked)}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded transition-colors"
-                  disabled={loading}
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
+                  disabled={submitting}
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a
-                  href="#"
-                  className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Handle forgot password
-                    alert('Forgot password functionality not implemented in demo');
-                  }}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
                 >
-                  Forgot password?
-                </a>
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
-            {/* General Error Message */}
-            {error && error.field === 'general' && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start">
-                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-red-800">{error.message}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <Button
+            <button
               type="submit"
-              loading={loading}
-              disabled={loading}
-              fullWidth
-              size="lg"
-              className="relative overflow-hidden"
+              disabled={submitting}
+              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span className="relative z-10">
-                {loading ? 'Signing in...' : 'Sign in to Dashboard'}
-              </span>
-              {!loading && (
-                <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-purple-600 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                'Sign In'
               )}
-            </Button>
+            </button>
           </form>
         </div>
 
-        {/* Footer */}
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            © 2024 Government of Telangana. All rights reserved.
-          </p>
-          <div className="mt-2 flex justify-center space-x-4 text-xs text-gray-400">
-            <a href="#" className="hover:text-gray-600 transition-colors">Privacy Policy</a>
-            <span>•</span>
-            <a href="#" className="hover:text-gray-600 transition-colors">Terms of Service</a>
-            <span>•</span>
-            <a href="#" className="hover:text-gray-600 transition-colors">Support</a>
+        {/* Role Info */}
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <div className="bg-white/80 backdrop-blur rounded-lg p-3 text-center border border-gray-200">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mx-auto mb-1" />
+            <p className="text-xs text-gray-600 font-medium">AO/CAO</p>
+            <p className="text-[10px] text-gray-400">Loan & Drawdowns</p>
+          </div>
+          <div className="bg-white/80 backdrop-blur rounded-lg p-3 text-center border border-gray-200">
+            <div className="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1" />
+            <p className="text-xs text-gray-600 font-medium">District Manager</p>
+            <p className="text-[10px] text-gray-400">Utilization & Farmers</p>
+          </div>
+          <div className="bg-white/80 backdrop-blur rounded-lg p-3 text-center border border-gray-200">
+            <div className="w-2 h-2 bg-purple-500 rounded-full mx-auto mb-1" />
+            <p className="text-xs text-gray-600 font-medium">MD</p>
+            <p className="text-[10px] text-gray-400">Dashboard & Reports</p>
+          </div>
+          <div className="bg-white/80 backdrop-blur rounded-lg p-3 text-center border border-gray-200">
+            <div className="w-2 h-2 bg-orange-500 rounded-full mx-auto mb-1" />
+            <p className="text-xs text-gray-600 font-medium">Super Admin</p>
+            <p className="text-[10px] text-gray-400">Full Access</p>
           </div>
         </div>
 
-        {/* System Status */}
-        <div className="text-center">
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
-            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-            All systems operational
-          </div>
-        </div>
+        <p className="mt-4 text-center text-xs text-gray-400">
+          G.O No. 558 | Vanakalam 2025-26 | Maize MSP @ Rs.2400/Qtl
+        </p>
       </div>
     </div>
   );
 };
 
-export default Login;
+export default MarkfedLogin;

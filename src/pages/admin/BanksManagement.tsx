@@ -1,0 +1,138 @@
+// ============================================
+// pages/admin/BanksManagement.tsx — SUPER_ADMIN only
+// ============================================
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit3, CheckCircle, AlertCircle, Building2 } from 'lucide-react';
+import { banksAPI } from '../../api/services';
+import type { Bank } from '../../types/markfed';
+
+export const BanksManagement: React.FC = () => {
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState({ name: '', code: '', ifsc_code: '', is_active: true });
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await banksAPI.list();
+        setBanks(data);
+      } catch { setMessage({ type: 'error', text: 'Failed to load' }); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
+  const openAdd = () => { setEditingId(null); setForm({ name: '', code: '', ifsc_code: '', is_active: true }); setShowModal(true); };
+  const openEdit = (b: Bank) => { setEditingId(b.id); setForm({ name: b.name, code: b.code, ifsc_code: b.ifsc_code || '', is_active: b.is_active }); setShowModal(true); };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setMessage({ type: 'error', text: 'Name is required' }); return; }
+    try {
+      const payload = { ...form, ifsc_code: form.ifsc_code || undefined };
+      if (editingId) {
+        const { data } = await banksAPI.update(editingId, payload);
+        setBanks(banks.map((b) => (b.id === editingId ? data : b)));
+      } else {
+        const { data } = await banksAPI.create(payload);
+        setBanks([...banks, data]);
+      }
+      setShowModal(false);
+      setMessage({ type: 'success', text: editingId ? 'Updated' : 'Created' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) { setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed' }); }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3"><Building2 className="w-7 h-7 text-blue-600" />Banks Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage banks and IFSC codes</p>
+        </div>
+        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg shadow-lg shadow-blue-500/30"><Plus className="w-4 h-4" />Add Bank</button>
+      </div>
+
+      {message && (
+        <div className={`mb-4 flex items-center gap-2 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+          {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}{message.text}
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <table className="w-full text-sm">
+          <thead><tr className="bg-gray-50 border-b">
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">Name</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">Code</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">IFSC Code</th>
+            <th className="px-4 py-3 text-center font-semibold text-gray-600">Status</th>
+            <th className="px-4 py-3 text-center font-semibold text-gray-600 w-20">Actions</th>
+          </tr></thead>
+          <tbody>
+            {banks.map((b) => (
+              <tr key={b.id} className="border-b hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{b.name}</td>
+                <td className="px-4 py-3 font-mono text-gray-600">{b.code}</td>
+                <td className="px-4 py-3 font-mono text-gray-600">{b.ifsc_code || '-'}</td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${b.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{b.is_active ? 'Active' : 'Inactive'}</span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <button onClick={() => openEdit(b)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit3 className="w-4 h-4" /></button>
+                </td>
+              </tr>
+            ))}
+            {banks.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No banks found</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {showModal && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-bold mb-4">{editingId ? 'Edit Bank' : 'Add Bank'}</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" placeholder="e.g. State Bank of India" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+                  <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" placeholder="e.g. SBI" maxLength={10} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code</label>
+                  <input type="text" value={form.ifsc_code} onChange={(e) => setForm({ ...form, ifsc_code: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" placeholder="e.g. SBIN0001234" maxLength={11} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="block text-sm font-medium text-gray-700">Active</label>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, is_active: !form.is_active })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.is_active ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
+                <button onClick={handleSave} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">{editingId ? 'Update' : 'Create'}</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default BanksManagement;
