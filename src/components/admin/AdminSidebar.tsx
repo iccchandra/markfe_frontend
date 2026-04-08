@@ -147,8 +147,8 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           {/* Logo */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <img src="/logo (3).png" alt="Telangana Govt" className="w-9 h-9 object-contain" />
-              <img src="/1.png" alt="TG MARKFED" className="w-9 h-9 object-contain" />
+              <img src="/telangana-govt.png" alt="Telangana Govt" className="w-9 h-9 object-contain" />
+              <img src="/markfed-logo.png" alt="TG MARKFED" className="w-9 h-9 object-contain" />
               <div>
                 <h2 className="text-sm font-bold text-gray-900">TG MARKFED</h2>
                 <p className="text-[10px] text-gray-500">Maize MSP Portal</p>
