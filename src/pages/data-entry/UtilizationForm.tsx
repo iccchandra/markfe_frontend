@@ -343,6 +343,9 @@ export const UtilizationForm: React.FC = () => {
                         step={0.01}
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-right focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50"
                       />
+                      {(form.values[head.id] || 0) > 0 && (
+                        <p className="text-[10px] text-blue-500 mt-0.5 text-right">= {formatAmount(form.values[head.id])}</p>
+                      )}
                     </div>
                   </div>
                 ))}

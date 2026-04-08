@@ -359,14 +359,19 @@ export const DrawdownsForm: React.FC = () => {
                 </td>
                 <td className="px-4 py-3 text-right">
                   {row.isEditing ? (
-                    <input
-                      type="number"
-                      value={row.amount_withdrawn_rs || ''}
-                      onChange={(e) => handleFieldChange(index, 'amount_withdrawn_rs', parseFloat(e.target.value) || 0)}
-                      min={0}
-                      placeholder="e.g. 25000000 for 2.5 Cr"
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div>
+                      <input
+                        type="number"
+                        value={row.amount_withdrawn_rs || ''}
+                        onChange={(e) => handleFieldChange(index, 'amount_withdrawn_rs', parseFloat(e.target.value) || 0)}
+                        min={0}
+                        placeholder="e.g. 25000000 for 2.5 Cr"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:ring-2 focus:ring-blue-500"
+                      />
+                      {(row.amount_withdrawn_rs || 0) > 0 && (
+                        <p className="text-[10px] text-blue-500 mt-0.5 text-right">= {formatAmount(row.amount_withdrawn_rs)}</p>
+                      )}
+                    </div>
                   ) : (
                     <span className="font-mono">{formatAmount(row.amount_withdrawn_rs)}</span>
                   )}

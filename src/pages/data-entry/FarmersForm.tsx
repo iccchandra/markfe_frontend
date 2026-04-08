@@ -378,6 +378,9 @@ export const FarmersForm: React.FC = () => {
                   step={0.01}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-right focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
                 />
+                {(form.payment_released_to_farmers_rs || 0) > 0 && (
+                  <p className="text-[10px] text-blue-500 mt-0.5 text-right">= {formatAmount(form.payment_released_to_farmers_rs)}</p>
+                )}
               </div>
 
               {/* Remarks */}
