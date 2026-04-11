@@ -50,6 +50,35 @@ import { GenerateStorageBillForm } from './pages/storage/GenerateStorageBillForm
 import { ReleaseOrdersDashboard } from './pages/release-orders/ReleaseOrdersDashboard';
 import { GenerateROForm } from './pages/release-orders/GenerateROForm';
 
+// Admin — New Master Data Pages
+import { CommoditiesManagement } from './pages/admin/CommoditiesManagement';
+import { SeasonCommoditiesManagement } from './pages/admin/SeasonCommoditiesManagement';
+import { GodownsManagement } from './pages/admin/GodownsManagement';
+import { ContractorsManagement } from './pages/admin/ContractorsManagement';
+import { GodownContractorsManagement } from './pages/admin/GodownContractorsManagement';
+import { GunnySuppliersManagement } from './pages/admin/GunnySuppliersManagement';
+
+// Procurement Module
+import { ProcurementCentresList } from './pages/procurement/ProcurementCentresList';
+import { DistrictProductionList } from './pages/procurement/DistrictProductionList';
+import { DistrictProductionForm } from './pages/procurement/DistrictProductionForm';
+import { ProcurementTrackingList } from './pages/procurement/ProcurementTrackingList';
+import { ProcurementTrackingForm } from './pages/procurement/ProcurementTrackingForm';
+
+// Unloading Bills Module
+import { UnloadingBillsList } from './pages/unloading/UnloadingBillsList';
+import { UnloadingBillForm } from './pages/unloading/UnloadingBillForm';
+
+// Transport — Real API Pages
+import { TransportTripsList } from './pages/transportation/TransportTripsList';
+import { TransportTripForm } from './pages/transportation/TransportTripForm';
+
+// Reports — New Pages
+import { DPRReport } from './pages/reports/DPRReport';
+import { ReconciliationDashboard } from './pages/reports/ReconciliationDashboard';
+import { HistoricalProcurement } from './pages/reports/HistoricalProcurement';
+import { ImportExport } from './pages/reports/ImportExport';
+
 function App() {
   return (
     <BrowserRouter>
@@ -81,6 +110,10 @@ function App() {
             <Route path="reports">
               <Route path="md-sheet" element={<MDSheetView />} />
               <Route path="farmers-sheet" element={<FarmersSheetView />} />
+              <Route path="dpr" element={<DPRReport />} />
+              <Route path="reconciliation" element={<ReconciliationDashboard />} />
+              <Route path="historical" element={<HistoricalProcurement />} />
+              <Route path="import-export" element={<ImportExport />} />
             </Route>
 
             {/* ==================== ADMIN (SUPER_ADMIN) ==================== */}
@@ -92,6 +125,29 @@ function App() {
               <Route path="banks" element={<BanksManagement />} />
               <Route path="utilization-heads" element={<UtilizationHeadsManagement />} />
               <Route path="approvals" element={<ApprovalQueue />} />
+              <Route path="commodities" element={<CommoditiesManagement />} />
+              <Route path="season-commodities" element={<SeasonCommoditiesManagement />} />
+              <Route path="godowns" element={<GodownsManagement />} />
+              <Route path="contractors" element={<ContractorsManagement />} />
+              <Route path="godown-contractors" element={<GodownContractorsManagement />} />
+              <Route path="gunny-suppliers" element={<GunnySuppliersManagement />} />
+            </Route>
+
+            {/* ==================== PROCUREMENT MODULE ==================== */}
+            <Route path="procurement">
+              <Route path="centres" element={<ProcurementCentresList />} />
+              <Route path="production" element={<DistrictProductionList />} />
+              <Route path="production/edit/:scId/:districtId" element={<DistrictProductionForm />} />
+              <Route path="tracking" element={<ProcurementTrackingList />} />
+              <Route path="tracking/new" element={<ProcurementTrackingForm />} />
+              <Route path="tracking/:id" element={<ProcurementTrackingForm />} />
+            </Route>
+
+            {/* ==================== UNLOADING BILLS MODULE ==================== */}
+            <Route path="unloading">
+              <Route index element={<UnloadingBillsList />} />
+              <Route path="new" element={<UnloadingBillForm />} />
+              <Route path=":id" element={<UnloadingBillForm />} />
             </Route>
 
             {/* ==================== TRANSPORTATION MODULE ==================== */}
@@ -108,7 +164,9 @@ function App() {
                 <Route path="edit/:id" element={<TransportersMaster />} />
               </Route>
               <Route path="slabs" element={<TransportationDashboard />} />
-              <Route path="trips" element={<TransportationDashboard />} />
+              <Route path="trips" element={<TransportTripsList />} />
+              <Route path="trips/new" element={<TransportTripForm />} />
+              <Route path="trips/:id" element={<TransportTripForm />} />
               <Route path="billing" element={<TransportationDashboard />} />
               <Route path="payments" element={<TransportationDashboard />} />
             </Route>

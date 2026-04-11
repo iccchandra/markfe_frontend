@@ -5,7 +5,10 @@
 export enum UserRole {
   SUPER_ADMIN = 'super_admin',
   MD = 'md',
+  GM = 'gm',
   AO_CAO = 'ao_cao',
+  MANAGER_PROCUREMENT = 'manager_procurement',
+  MANAGER_HR = 'manager_hr',
   DM = 'dm',
 }
 

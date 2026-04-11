@@ -41,7 +41,7 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, hasRole } = useAuth();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
-  const allRoles = [UserRole.SUPER_ADMIN, UserRole.MD, UserRole.AO_CAO, UserRole.DM];
+  const allRoles = [UserRole.SUPER_ADMIN, UserRole.MD, UserRole.GM, UserRole.AO_CAO, UserRole.MANAGER_PROCUREMENT, UserRole.MANAGER_HR, UserRole.DM];
 
   const menuItems: MenuItem[] = useMemo(() => [
     {
@@ -65,6 +65,27 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { id: 'farmers', label: 'Farmers Data', path: '/data-entry/farmers', roles: [UserRole.SUPER_ADMIN, UserRole.DM] },
       ],
     },
+    // ─── Procurement ───────────────────────────
+    {
+      id: 'procurement',
+      label: 'Procurement',
+      icon: <ClipboardCheck className="w-5 h-5" />,
+      path: '/procurement',
+      roles: [UserRole.SUPER_ADMIN, UserRole.MD, UserRole.AO_CAO, UserRole.DM],
+      submenu: [
+        { id: 'proc-centres', label: 'Centres', path: '/procurement/centres' },
+        { id: 'proc-production', label: 'District Production', path: '/procurement/production' },
+        { id: 'proc-tracking', label: 'Daily Tracking', path: '/procurement/tracking' },
+      ],
+    },
+    // ─── Unloading ─────────────────────────────
+    {
+      id: 'unloading',
+      label: 'Unloading Bills',
+      icon: <Receipt className="w-5 h-5" />,
+      path: '/unloading',
+      roles: [UserRole.SUPER_ADMIN, UserRole.MD, UserRole.AO_CAO, UserRole.DM],
+    },
     // ─── Reports ────────────────────────────────
     {
       id: 'reports',
@@ -75,6 +96,84 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       submenu: [
         { id: 'md-sheet', label: 'MD Sheet View', path: '/reports/md-sheet' },
         { id: 'farmers-sheet', label: 'Farmers Sheet View', path: '/reports/farmers-sheet' },
+        { id: 'dpr-report', label: 'DPR Report', path: '/reports/dpr' },
+        { id: 'reconciliation', label: 'Reconciliation', path: '/reports/reconciliation' },
+        { id: 'historical', label: 'Historical Data', path: '/reports/historical' },
+        { id: 'import-export', label: 'Import / Export', path: '/reports/import-export' },
+      ],
+    },
+    // ─── Transportation ─────────────────────────
+    {
+      id: 'transportation',
+      label: 'Transportation',
+      icon: <Truck className="w-5 h-5" />,
+      path: '/transportation',
+      roles: allRoles,
+      submenu: [
+        { id: 'transport-dashboard', label: 'Dashboard', path: '/transportation' },
+        { id: 'transport-vehicles', label: 'Vehicles', path: '/transportation/vehicles' },
+        { id: 'transport-transporters', label: 'Transporters', path: '/transportation/transporters' },
+        { id: 'transport-slabs', label: 'Slabs', path: '/transportation/slabs' },
+        { id: 'transport-trips', label: 'Trips', path: '/transportation/trips' },
+        { id: 'transport-billing', label: 'Billing', path: '/transportation/billing' },
+        { id: 'transport-payments', label: 'Payments', path: '/transportation/payments' },
+      ],
+    },
+    // ─── Gunny Bags ─────────────────────────────
+    {
+      id: 'gunny-bags',
+      label: 'Gunny Bags',
+      icon: <Package className="w-5 h-5" />,
+      path: '/gunny-bags',
+      roles: allRoles,
+      submenu: [
+        { id: 'gunny-dashboard', label: 'Dashboard', path: '/gunny-bags' },
+        { id: 'gunny-vendors', label: 'Vendors', path: '/gunny-bags/vendors' },
+        { id: 'gunny-types', label: 'Types', path: '/gunny-bags/types' },
+        { id: 'gunny-procurement', label: 'Procurement', path: '/gunny-bags/procurement' },
+        { id: 'gunny-grn', label: 'GRN', path: '/gunny-bags/grn' },
+        { id: 'gunny-inventory', label: 'Inventory', path: '/gunny-bags/inventory' },
+        { id: 'gunny-issuance', label: 'Issuance', path: '/gunny-bags/issuance' },
+        { id: 'gunny-performance', label: 'Performance', path: '/gunny-bags/performance' },
+      ],
+    },
+    // ─── Storage ────────────────────────────────
+    {
+      id: 'storage',
+      label: 'Storage',
+      icon: <Warehouse className="w-5 h-5" />,
+      path: '/storage',
+      roles: allRoles,
+      submenu: [
+        { id: 'storage-dashboard', label: 'Dashboard', path: '/storage' },
+        { id: 'storage-billing', label: 'Billing', path: '/storage/billing' },
+        { id: 'storage-insurance', label: 'Insurance', path: '/storage/insurance' },
+        { id: 'storage-movements', label: 'Movements', path: '/storage/movements' },
+        { id: 'storage-utilization', label: 'Utilization', path: '/storage/utilization' },
+        { id: 'storage-quality', label: 'Quality', path: '/storage/quality' },
+        { id: 'storage-reconciliation', label: 'Reconciliation', path: '/storage/reconciliation' },
+        { id: 'storage-cost-analysis', label: 'Cost Analysis', path: '/storage/cost-analysis' },
+        { id: 'storage-compliance', label: 'Compliance', path: '/storage/compliance' },
+      ],
+    },
+    // ─── Release Orders ─────────────────────────
+    {
+      id: 'release-orders',
+      label: 'Release Orders',
+      icon: <FileText className="w-5 h-5" />,
+      path: '/release-orders',
+      roles: allRoles,
+      submenu: [
+        { id: 'ro-dashboard', label: 'Dashboard', path: '/release-orders' },
+        { id: 'ro-generate', label: 'Generate', path: '/release-orders/generate' },
+        { id: 'ro-payments', label: 'Payments', path: '/release-orders/payments' },
+        { id: 'ro-amendments', label: 'Amendments', path: '/release-orders/amendments' },
+        { id: 'ro-lifting', label: 'Lifting', path: '/release-orders/lifting' },
+        { id: 'ro-delivery', label: 'Delivery', path: '/release-orders/delivery' },
+        { id: 'ro-weighment', label: 'Weighment', path: '/release-orders/weighment' },
+        { id: 'ro-gate-pass', label: 'Gate Pass', path: '/release-orders/gate-pass' },
+        { id: 'ro-closure', label: 'Closure', path: '/release-orders/closure' },
+        { id: 'ro-analytics', label: 'Analytics', path: '/release-orders/analytics' },
       ],
     },
     // ─── Admin (SUPER_ADMIN only) ───────────────
@@ -92,6 +191,12 @@ export const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { id: 'admin-banks', label: 'Banks', path: '/admin/banks' },
         { id: 'admin-util-heads', label: 'Utilization Heads', path: '/admin/utilization-heads' },
         { id: 'admin-approvals', label: 'Approvals', path: '/admin/approvals' },
+        { id: 'admin-commodities', label: 'Commodities', path: '/admin/commodities' },
+        { id: 'admin-season-comm', label: 'Season Commodities', path: '/admin/season-commodities' },
+        { id: 'admin-godowns', label: 'Godowns', path: '/admin/godowns' },
+        { id: 'admin-contractors', label: 'H&T Contractors', path: '/admin/contractors' },
+        { id: 'admin-godown-contr', label: 'Godown Contractors', path: '/admin/godown-contractors' },
+        { id: 'admin-gunny-supp', label: 'Gunny Suppliers', path: '/admin/gunny-suppliers' },
       ],
     },
   ], []);
